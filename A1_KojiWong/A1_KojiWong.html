@@ -431,7 +431,13 @@ dependencies</h3>
 <span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>  BiocManager<span class="sc">::</span><span class="fu">install</span>(<span class="st">&quot;biomaRt&quot;</span>)</span>
 <span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a></span>
 <span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;knitr&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>  BiocManager<span class="sc">::</span><span class="fu">install</span>(<span class="st">&quot;knitr&quot;</span>)</span></code></pre></div>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>  BiocManager<span class="sc">::</span><span class="fu">install</span>(<span class="st">&quot;knitr&quot;</span>)</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;ggplot2&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>  BiocManager<span class="sc">::</span><span class="fu">install</span>(<span class="st">&quot;ggplot2&quot;</span>)</span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;reshape2&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>  BiocManager<span class="sc">::</span><span class="fu">install</span>(<span class="st">&quot;reshape2&quot;</span>)</span></code></pre></div>
 </div>
 <div id="looking-at-our-dataset" class="section level3" number="2.2">
 <h3><span class="header-section-number">2.2</span> Looking at our
@@ -853,8 +859,24 @@ be mapped. Let’s also look at the normalized data with the symbols.</p>
 </tbody>
 </table>
 </div>
-<div id="questions" class="section level2" number="7">
-<h2><span class="header-section-number">7</span> Questions</h2>
+<div id="plotting-our-expression-data" class="section level2"
+number="7">
+<h2><span class="header-section-number">7</span> Plotting our expression
+data</h2>
+<p>We can plot our normalized expression data below in a boxplot. We can
+see that normalizing has made the data very uniform.</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="co"># Convert the data to long format for ggplot2</span></span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a>normalized_long <span class="ot">&lt;-</span> reshape2<span class="sc">::</span><span class="fu">melt</span>(normalized_counts_annot, <span class="at">variable.name =</span> <span class="st">&quot;Sample&quot;</span>, <span class="at">value.name =</span> <span class="st">&quot;Expression&quot;</span>)</span>
+<span id="cb28-3"><a href="#cb28-3" tabindex="-1"></a></span>
+<span id="cb28-4"><a href="#cb28-4" tabindex="-1"></a><span class="co"># Create the boxplot</span></span>
+<span id="cb28-5"><a href="#cb28-5" tabindex="-1"></a>ggplot2<span class="sc">::</span><span class="fu">ggplot</span>(normalized_long, ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">x =</span> Sample, <span class="at">y =</span> Expression, <span class="at">fill =</span> Sample)) <span class="sc">+</span></span>
+<span id="cb28-6"><a href="#cb28-6" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_boxplot</span>() <span class="sc">+</span></span>
+<span id="cb28-7"><a href="#cb28-7" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb28-8"><a href="#cb28-8" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Distribution of Normalized Expression&quot;</span>, <span class="at">x =</span> <span class="st">&quot;Sample&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Log2(CPM)&quot;</span>)</span></code></pre></div>
+<p><img src="A1_Report_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+</div>
+<div id="questions" class="section level2" number="8">
+<h2><span class="header-section-number">8</span> Questions</h2>
 <p><strong>1. Why is the dataset of interest to you?</strong></p>
 <p>This dataset was of interest to me as I have always been curious
 about RNA-Seq data about cancers, specifically breast cancer.</p>
@@ -927,6 +949,16 @@ Analysis.”</span> <em>Bioinformatics</em> 21: 3439–40.
 Morgan, Martin, and Marcel Ramos. 2023. <em>BiocManager: Access the
 Bioconductor Project Package Repository</em>. <a
 href="https://CRAN.R-project.org/package=BiocManager">https://CRAN.R-project.org/package=BiocManager</a>.
+</div>
+<div id="ref-reshape2" class="csl-entry">
+Wickham, Hadley. 2007. <span>“Reshaping Data with the <span
+class="nocase">reshape</span> Package.”</span> <em>Journal of
+Statistical Software</em> 21 (12): 1–20. <a
+href="http://www.jstatsoft.org/v21/i12/">http://www.jstatsoft.org/v21/i12/</a>.
+</div>
+<div id="ref-ggplot2" class="csl-entry">
+———. 2016. <em>Ggplot2: Elegant Graphics for Data Analysis</em>. <a
+href="https://ggplot2.tidyverse.org">https://ggplot2.tidyverse.org</a>.
 </div>
 <div id="ref-knitr" class="csl-entry">
 Xie, Yihui. 2014. <span>“Knitr: A Comprehensive Tool for Reproducible
