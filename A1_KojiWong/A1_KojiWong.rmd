@@ -1,0 +1,574 @@
+---
+title: "Assignment 1: Cleaning, Normalizing, and Mapping RNA-Seq Dataset From GEO"
+author: "Koji Wong"
+date: "02/11/2025"
+bibliography: "A1_bib.bib"
+output:
+    html_document:
+        toc: true
+        toc_float: true
+        number_sections: true
+        theme: cosmo
+        highlight: tango
+        code_folding: show
+        df_print: paged
+        self_contained: no
+nocite: '@*'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+The dataset I chose for my assignment is titled "Elevated GRHL2 imparts 
+plasticity in estrogen receptor positive breast cancer cells [RNA-seq]" with the
+GEO accession GSE272061 where the dataset can be obtained 
+[here](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE272061). This
+dataset is associated with the 2024 paper by Zheng et al. titled "Elevated GRHL2 
+Imparts Plasticity in ER-Positive Breast Cancer Cells" which can be obtained
+[here](https://www.mdpi.com/2072-6694/16/16/2906).
+
+The authors found that "high levels of the transcription factor 
+Grainyhead-like protein 2 (GRHL2) contribute to worse outcomes for patients with
+breast cancer tumors that express estrogen receptor (ER)" [@zheng2024]. The 
+authors investigated the effects of GRHL2 by creating an overexpression model 
+in MCF7 cells in which GRHL2-GFP fusion protein was produced upon induction with 
+doxycycline. RNA-seq was then performed on GFP-positive, GFP-negative, and 
+negative control cells which were not treated with dox to give us the raw 
+count values we will be analyzing.
+
+The dataset consists of raw counts for 5 samples with duplicates corresponding
+to the three different conditions, giving us a total of 15 samples. The three
+conditions are GFP-positive, GFP-negative, and negative control.
+
+
+## Getting Started
+
+### Installing dependencies
+```{r eval = TRUE, message = FALSE}
+# install bioconductor
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+if (!require("tools", quietly = TRUE))
+  install.packages("tools")
+
+# install GEOquery, edgeR, data.table, biomaRt, knitr
+if (!requireNamespace("GEOquery", quietly = TRUE))
+  BiocManager::install("GEOquery")
+
+if (!requireNamespace("edgeR", quietly = TRUE))
+  BiocManager::install("edgeR")
+
+if (!requireNamespace("data.table", quietly = TRUE))
+  BiocManager::install("data.table")
+
+if (!requireNamespace("biomaRt", quietly = TRUE))
+  BiocManager::install("biomaRt")
+
+if (!requireNamespace("knitr", quietly = TRUE))
+  BiocManager::install("knitr")
+
+if (!requireNamespace("ggplot2", quietly = TRUE))
+  BiocManager::install("ggplot2")
+
+if (!requireNamespace("reshape2", quietly = TRUE))
+  BiocManager::install("reshape2")
+
+```
+
+### Looking at our dataset
+
+We obtain the data directly from GEO using our accession (GSE272061) and the 
+GEOquery package's getGEO function.
+```{r eval = TRUE, message=FALSE}
+# getting the data from GEO 
+data_set_geoid <- "GSE272061"
+gse <- GEOquery::getGEO(data_set_geoid, GSEMatrix=FALSE)
+# looking at metadata of dataset
+current_gpl <- names(GEOquery::GPLList(gse))[1]
+current_gpl_info <- GEOquery::Meta(GEOquery::getGEO(current_gpl))
+```
+
+Then we can print out some of the metadata about our dataset we obtained.
+```{r eval = TRUE, message=TRUE}
+cat(
+  c(
+    sprintf("Platform title: %s", current_gpl_info$title),
+    sprintf("GEO accession: %s", current_gpl_info$geo_accession),
+    sprintf("Organism: %s", current_gpl_info$organism),
+    sprintf("Submitted on: %s", current_gpl_info$submission_date),
+    sprintf("Last updated on: %s", current_gpl_info$last_update_date),
+    sprintf("Total datasets: %s", length(current_gpl_info$series_id)),
+    sprintf("Total samples: %s", length(current_gpl_info$sample_id))
+  ),
+  sep='\n'
+)
+```
+
+## Getting Expression Data
+The next step is to download the supplementary files from GEO. In my case, I 
+only have one supplementary file which allows me to assume I can just index the
+first value. I specify where the download will go in the variable `download_dir` 
+and download the file only if it doesn't exist in that directory already.
+
+### Installing the dataset
+```{r eval=TRUE, message=FALSE}
+# Getting expression data
+sfilenames = GEOquery::getGEOSuppFiles(data_set_geoid, fetch_files = FALSE)
+# only have one file to download from GEO, choose the first
+raw_data_file <- sfilenames$fname[1]
+# file directory to store data in
+download_dir <- file.path(getwd(), "data")
+if (!dir.exists(download_dir)) {
+  dir.create(download_dir)
+}
+file_path <- file.path(download_dir, data_set_geoid, raw_data_file)
+if (!file.exists(file_path)) {
+  GEOquery::getGEOSuppFiles(
+    data_set_geoid,
+    filter_regex = raw_data_file,
+    baseDir = download_dir,
+    fetch_files = TRUE
+  )
+}
+```
+
+### Decompressing the data
+My files were downloaded as a compressed .tar file so I decompressed it using 
+the builtin `tar()` function and put it in a folder called `extracted`
+```{r eval=TRUE, message=FALSE}
+# decompressing files
+extracted_dir = file.path(download_dir, "extracted")
+download_path = file.path(download_dir, "GSE272061", raw_data_file)
+untar(download_path, exdir=extracted_dir)
+```
+
+Hooray, we can access the extracted files now, but all the count data are in 
+15 separate files. Let's combine these together into a convenient data frame.
+Along the way, we do some simple error checking, and get the files which we know 
+are in .gz format.
+
+### Making our count matrix as a data frame
+We want to extract the last column of each data file which contains our count 
+data. We also label the columns corresponding to the sample number (eg. p8) to 
+the GFP condition (eg. GFP-positive or negcontrol). We do this by extracting the
+condition and sample number from the file name. Later, I realized it would have 
+been easier to access it by `gse`.
+```{r eval=TRUE, message=FALSE}
+# We have 15 files, 
+# List all .gz files in the directory
+gz_files <- list.files(extracted_dir, pattern = "\\.gz$", full.names = TRUE)
+# Initialize a list to store the last columns
+last_columns <- list()
+row_names <- NULL
+# Loop through each .gz file
+for (file in gz_files) {
+  # Read the .gz file
+  data <- tryCatch(
+    {
+      read.table(gzfile(file), header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+    },
+    error = function(e) {
+      cat("Error reading file:", file, "\n")
+      cat("Error message:", e$message, "\n")
+      return(NULL)
+    }
+  )
+  # Skip if the file couldn't be read
+  if (is.null(data)) {
+    next
+  }
+  # Check if the data has at least one column
+  if (ncol(data) > 0) {
+    # Extract the last column
+    last_column <- data[, ncol(data)]
+    
+    # Extract the file name without path and extension
+    file_name <- tools::file_path_sans_ext(basename(file))
+    
+    # Clean up the file name to match the p{number}-{condition} format
+    # Eg: "GSM123_p8-GFPnegative.counts" -> "p8-GFPnegative"
+    col_name <- sub("^[^_]*_", "", file_name)
+    col_name <- sub("\\.counts\\.txt$", "", col_name)
+    
+    # Store the last column in the list, using the cleaned-up name as the key
+    last_columns[[col_name]] <- last_column
+    
+    # Store the row names (only once, assuming all files have the same row names)
+    if (is.null(row_names)) {
+      row_names <- data[, "Geneid"]
+    }
+    
+  } else {
+    cat("File has no columns:", file, "\n")
+  }
+}
+```
+Lastly, we convert the list of our last columns to a data frame and 
+we set the row names to be the genes.
+```{r eval=TRUE, message=FALSE}
+max_length <- max(sapply(last_columns, length))
+last_columns <- lapply(last_columns, function(col) {
+  if (length(col) < max_length) {
+    c(col, rep(NA, max_length - length(col)))
+  } else {
+    col
+  }
+})
+count_matrix <- do.call(cbind, last_columns)
+# Convert to a data frame
+count_matrix <- as.data.frame(count_matrix)
+# Add row names to the data frame
+rownames(count_matrix) <- row_names
+```
+
+### Looking at the raw data
+We can view the number of rows (or genes) and the number of columns (or conditions)
+```{r eval=TRUE, message=TRUE}
+# Printing out the data
+cat(
+  c(
+    sprintf("Summary of Count Matrix"),
+    sprintf("number of genes: %d", nrow(count_matrix)),
+    sprintf("number of conditions: %d", ncol(count_matrix))
+  ),
+  sep='\n'
+)
+```
+
+### Looking at the metadata
+We can view the metadata for each of our samples, including the title, accession,
+tissue, and treatment.
+
+```{r eval=TRUE, message=FALSE}
+samples <- gse@gsms
+samples_type <- do.call(rbind,
+                        lapply(samples,
+                               FUN=function(x) {
+                                 c(x@header$title,
+                                   x@header$characetristics_ch1)
+                               }))
+
+# Make a table of metadata
+metadata_df <- data.frame(
+  title = character(),
+  accession = character(),
+  tissue = character(),
+  cell_line = character(),
+  treatment = character(),
+  sorting = character(),
+  library_strategy = character()
+)
+for (i in 1:length(samples)) {
+  # Save header variable for easy reference
+  header <- samples[[i]]@header
+  # Get list of values we need
+  title <- header$title
+  accession <- header$geo_accession
+  tissue <- header$characteristics_ch1[1]
+  cell_line <- header$characteristics_ch1[2]
+  treatment <- header$characteristics_ch1[3]
+  sorting <- header$characteristics_ch1[4]
+  library_strategy <- header$library_strategy
+  
+  # Create a temporary df to append to our current one
+  tmp <- data.frame(
+    title = title,
+    accession = accession,
+    tissue = tissue,
+    cell_line = cell_line,
+    treatment = treatment,
+    sorting = sorting,
+    library_strategy = library_strategy
+  )
+  
+  # Bind dataframe and set as old one
+  metadata_df <- rbind(metadata_df, tmp)
+}
+```
+
+Let's look at the metadata
+```{r eval=TRUE, message=TRUE}
+head(metadata_df, 15)
+```
+As we can see, all the samples were obtained from breast cancer tissue, each with their own accession. the control was treated with vehicle while 
+the test conditions were treated with Dox.
+
+## Filtering
+Let's look at the first couple of rows of our coount data.
+```{r eval=TRUE, message=TRUE}
+# Check the first 10 rows
+head(count_matrix, 10)
+```
+
+That's quite a lot of 0's, it seems like we can clean this up by removing genes 
+with low total counts.
+
+```{r eval=TRUE, message=FALSE}
+# Filtering our data
+# Eliminate genes with low counts
+cat(sprintf("Number of genes before filtering: %s", nrow(count_matrix)))
+sample_type_dt <- data.table::data.table(count_matrix)
+min_num_samples <- 16
+# Calculate row sums
+row_sums <- rowSums(count_matrix)
+# Filter rows where row sums are greater than or equal to 20
+filtered_dataset <- count_matrix[row_sums > min_num_samples, ]
+```
+Below we can see the number of genes that were filtered out, just from low counts.
+```{r eval=TRUE, message=TRUE}
+cat(sprintf("Number of genes before filtering: %s", nrow(count_matrix)))
+cat(sprintf("Number of genes after filtering low counts: %s", nrow(filtered_dataset)))
+cat(sprintf("Total number of genes filtered out: %s", nrow(count_matrix) - nrow(filtered_dataset)))
+```
+
+We filtered out 35525 genes! This makes sense as we're working with samples from 
+breast cancer tissue specifically, so many genes would not be differentially 
+expressed and present in RNA-seq data.
+
+
+## Mapping to Gene Symbols
+The next step of our analysis is to map our ensembl gene IDs to HGNC symbols. We 
+do so using the biomaRt package. We also save the data as a .rds file since this 
+is an expensive operation.
+```{r eval=TRUE, message=FALSE}
+# Mapping our data to gene symbols
+ensembl <- biomaRt::useMart("ensembl")
+
+datasets <- biomaRt::listDatasets(ensembl)
+knitr::kable(head(datasets[grep(datasets$dataset,
+                                pattern="sapiens"),]), format="html")
+# Use homo sapiens gene ensembl dataset
+ensembl <- biomaRt::useDataset("hsapiens_gene_ensembl", mart=ensembl)
+# Want to get attributes gene Ids and HGNC symbols
+genes <- unique(rownames(count_matrix))
+# Remove any version numbers
+genes <- gsub("\\..*", "", genes)
+# Check if we have already processed data, very expensive task
+conversion_stash <- "id_conversion.rds"
+if (file.exists(conversion_stash)) {
+  id_conversion <- readRDS(conversion_stash)
+} else {
+  id_conversion <- biomaRt::getBM(
+    attributes = c("ensembl_gene_id", "hgnc_symbol"),
+    filters = "ensembl_gene_id",
+    values = genes,
+    mart = ensembl
+  )
+  saveRDS(id_conversion, conversion_stash)
+}
+```
+
+
+We can view how many genes we've had before and how many we have after mapping.
+```{r eval=TRUE, message=TRUE}
+
+num_mapped_genes = length(which(rownames(filtered_dataset) %in%
+                                  id_conversion$ensembl_gene_id))
+cat(
+  c(
+    sprintf("Number of ensembl genes we started with: %d", nrow(filtered_dataset)),
+    sprintf("Number of ensembl genes we were able to map: %d", num_mapped_genes),
+    sprintf("Number of genes that were not able to be mapped: %d", nrow(filtered_dataset) - num_mapped_genes)
+  ),
+  sep='\n'
+)
+count_matrix_annot <- merge(id_conversion, filtered_dataset,
+                            by.x = 1, by.y = 0, all.y=TRUE)
+```
+We see that we've mapped most of our genes, only 479 were unable to be mapped. 
+However, later in our analysis, we discover that there are many more genes that 
+were "mapped" to the empty string which we had to remove.
+
+For now, let's also look at the count data with the symbols.
+```{r eval=TRUE, message=TRUE}
+knitr::kable(count_matrix_annot[1:5, 1:5], type="html")
+```
+
+### Cleaning Gene Symbol Data
+After mapping ensembl gene identifiers to the HGNC symbols, I noticed that there 
+were some outliers needed to be removed. Namely, na and empty string values which
+we previously included as valid mappings.
+```{r eval=TRUE, message=TRUE}
+num_na <- sum(is.na(count_matrix_annot$hgnc_symbol))
+cat(sprintf("Number of na gene symbols: %d", num_na))
+# remove na rows
+count_matrix_annot <- count_matrix_annot[!is.na(count_matrix_annot$hgnc_symbol), ]
+num_empty <- sum(count_matrix_annot$hgnc_symbol == "")
+cat(sprintf("Number of empty string symbols: %d", num_empty))
+# remove empty string rows
+count_matrix_annot <- count_matrix_annot[(count_matrix_annot$hgnc_symbol!=""),]
+```
+
+We check these rows were removed.
+```{r eval=TRUE, message=TRUE}
+num_empty <- sum(count_matrix_annot$hgnc_symbol == "")
+num_na <- sum(is.na(count_matrix_annot$hgnc_symbol))
+cat(
+  c(
+    sprintf("Number of empty string symbols: %d", num_empty),
+    sprintf("Number of na gene symbols: %d", num_na)
+  ),
+  sep="\n"
+)
+```
+
+
+### Handling Replicate Symbols
+When we map our gene identifiers to HGNC symbols, there's a chance of duplicates.
+```{r eval=TRUE, message=TRUE}
+cat(sprintf("Number of duplicate gene symbols: %d", sum(duplicated(count_matrix_annot$hgnc_symbol))))
+```
+
+As we can see we have only 1 duplicate symbols. We can even find which symbol it 
+is.
+```{r eval=TRUE, message=FALSE}
+cat(count_matrix_annot[duplicated(count_matrix_annot$hgnc_symbol),]$hgnc_symbol)
+```
+
+Note: I originally thought there were many more duplicate gene symbols which prompted me 
+to design the code under. However, I found that most of those were identifiers 
+mapping to the empty string or na. The original sum of duplicates was the sum of 
+those two plus 1, our GUSBP11. For the sake of exercise, I leave my code here, which
+aggregates the count sums of all duplicate symbols across the columns. Had I known 
+it was mostly rows I was going to remove anyways, I would have kept it as is since 
+the trade off of losing those gene identifiers for a single duplicate is unsatisfactory to me.
+
+```{r eval=TRUE, message=FALSE}
+# Drop ensembl_id and aggregate on hgnc_symbol
+filtered_dataset <- aggregate(. ~ hgnc_symbol, data = count_matrix_annot[, -1], FUN = sum)
+```
+
+We can visualize the data before it is normalized.
+```{r eval=TRUE, message=FALSE}
+# Convert the data to long format for ggplot2
+normalized_long <- reshape2::melt(filtered_dataset, variable.name = "Sample", value.name = "Expression")
+
+# Create the boxplot
+ggplot2::ggplot(normalized_long, ggplot2::aes(x = Sample, y = Expression, fill = Sample)) +
+  ggplot2::geom_boxplot() +
+  ggplot2::theme_minimal() +
+  ggplot2::labs(title = "Distribution of Unnormalized Expression", x = "Sample", y = "CPM (not normalized)") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5),  # Rotate x-axis labels vertically
+    legend.position = "none"  # Remove the legend
+  )
+```
+
+As we can see from this boxplot, the data is very difficult to read when it is 
+not yet normalized, since the values for counts can vary widely. In the next part 
+we will normalize these values using Trimmed Means of M-values.
+
+
+## Normalization
+The last step after filtering for low counts is to normalize our data. We do so
+using the edgeR package which contains functions to help us normalize. We use 
+Trimmed Means of M-values (TMM) which is based on the hypothesis that most genes
+are not differentially expressed. Perfect for our use case of RNA-seq.
+```{r eval=TRUE, message=FALSE}
+# Normalizing our data
+# Create a DGEList object, make sure we use a matrix
+dge <- edgeR::DGEList(counts = as.matrix(filtered_dataset[,-1]))
+# Calculate TMM normalization factors
+dge <- edgeR::calcNormFactors(dge, method = "TMM")
+# Get normalized counts per million (log2-transformed)
+normalized_counts <- edgeR::cpm(dge, log = TRUE)
+# Convert to a data frame
+normalized_df <- as.data.frame(normalized_counts)
+```
+
+After that, we merge the gene symbols in with the normalized count values. 
+```{r eval=TRUE, message=FALSE}
+# make a hgnc_column in our normalized_df
+normalized_df$hgnc_symbol <- filtered_dataset$hgnc_symbol
+# Move hgnc_symbol column to be the first 
+normalized_df <- normalized_df[, c("hgnc_symbol", setdiff(names(normalized_df), "hgnc_symbol"))]
+```
+Let's take a look at our data now, with our normalized values and HGNC symbols.
+```{r eval=TRUE, message=FALSE}
+cat(
+  c(
+    sprintf("Number of rows: %d", nrow(normalized_df)),
+    sprintf("Number of cols: %d", ncol(normalized_df))
+  ),
+  sep="\n"
+)
+
+
+head(normalized_df[1:5, 1:10])
+```
+
+
+## Plotting our expression data
+We can plot our normalized expression data below in a boxplot. We can see that normalizing has
+made the data very uniform.
+```{r eval=TRUE, message=FALSE}
+# Convert the data to long format for ggplot2
+normalized_long <- reshape2::melt(normalized_df, variable.name = "Sample", value.name = "Expression")
+
+# Create the boxplot with rotated x-axis labels
+ggplot2::ggplot(normalized_long, ggplot2::aes(x = Sample, y = Expression, fill = Sample)) +
+  ggplot2::geom_boxplot() +
+  ggplot2::theme_minimal() +
+  ggplot2::labs(title = "Distribution of Normalized Expression", x = "Sample", y = "Log2(CPM)") +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5))  # Rotate labels 90 degrees
+```
+
+## Questions
+
+**1. Why is the dataset of interest to you?**
+
+This dataset was of interest to me as I was always curious about working with RNA-Seq 
+data about cancers, especially ones of differential expression in a localized region.
+
+**2. What are the control and test conditions of the dataset?**
+
+The test conditions are either GFP-positive or GFP-negative and are treated with 
+1 μg/mL doxycycline hyclate and 10 nM 17β-estradiol for 72 hours, changing the 
+media every 24 hours. The negative control was treated with vehicle with media 
+changes every 24 hours as well.
+
+**3. How many samples in each of the conditions of your dataset?**
+
+For each of the 3 conditions there were 5 samples, giving us 15 total columns.
+
+**4. Were there expression values that were not unique for specific genes? How did you handle these?**
+
+Many expression values had 0 counts across all conditions/samples, which is understood 
+through the lack of differential expression in these breast cancer tissues.
+
+These rows were simply excluded as they would create noise in the normalization 
+process. Specifically, all expression values with count sums less than 16 were 
+removed. This threshold was chosen in that if there was a row with 16 counts, 
+then at least one condition has more than 1 count, since there are 15 rows
+
+**5. Were there expression values that could not be mapped to current HUGO symbols?**
+
+Yes, there were 479 na values and 2634 empty string values giving us a total of 
+3113 expression values that could not be mapped to current HUGO symbols.
+
+**6. Were there any outliers in your dataset? How were they handled in the originating paper? How many outliers were removed?**
+
+The expression values with less than 16 were removed. In total, there were 35525 
+rows which were removed from filtering. 
+
+**7. How did you handle replicates?**
+
+There were no duplicate rows in the initial dataset. There were however multiple 
+rows pointing to the same HGNC symbol. After further investigation, it was found 
+that all but one of the duplicates were mapping to empty strings or na values. So
+after filtering out those rows, we were left with only one replicate.
+
+For the sake of exercise, the duplicates were squashed down to a single gene symbol.
+As a result, ensembl gene id's were dropped. These can easily be obtained again 
+if needed for analysis, but for simplicity we will stick with HGNC symbols as keys 
+for count data.
+
+**8. What is the final coverage of your dataset?**
+
+The initial dataset consisted of 57500 rows.
+The final dataset has 18863 rows each mapping to a unique HGNC symbol with 
+15 columns for count data and 1 column containing the HGNC symbols. 
+
+## Works Cited
