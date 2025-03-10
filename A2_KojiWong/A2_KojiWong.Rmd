@@ -16,5 +16,128 @@ output:
 nocite: '@*'
 ---
 
+# Set Up
+```{r eval=TRUE, message=FALSE}
+# install dependencies
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+if (!require("tools", quietly = TRUE))
+  install.packages("tools")
+if (!requireNamespace("edgeR", quietly = TRUE))
+  BiocManager::install("edgeR")
+if (!requireNamespace("limma", quietly = TRUE))
+  BiocManager::install("limma")
+```
 
 # Introduction
+
+
+## Getting our normalized count data
+```{r eval = TRUE, message = TRUE}
+# Getting the normalized RNASeq counts from Assignment 1
+destfile = "normalized_matrix.rds"
+if (!file.exists(destfile)) {
+  download.file(
+    url = "https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A2_KojiWong/normalized_matrix.rds",
+    destfile = destfile
+  )
+}
+# Load in the normalized count matrix from our rds object file
+normalized_matrix <- readRDS(destfile)
+head(normalized_matrix)
+```
+
+# Differential Expression Analysis
+
+## Creating a Design Matrix
+We create a design matrix as it defines how the samples are structured across conditions, like GFPnegative, GFPpositive, and negative control as well as factors like which patient it is. It tells the statistical model what comparisons to make and which variables to control for.
+```{r eval=TRUE, message=FALSE}
+# Column names of your normalized matrix, except the first column (hgnc_symbol)
+sample_names <- colnames(normalized_matrix)[-1]
+
+# Extract conditions and patients
+conditions <- rep(c("GFPnegative", "GFPpositive", "negcontrol"), times = 5)
+patients <- rep(c("p8", "p9", "p10", "p11", "p12"), each = 3)
+
+# Create a design data frame
+design <- data.frame(sample = sample_names, patient = patients, condition = conditions)
+
+# Remove the gene symbols column and keep expression values
+expression_data <- as.matrix(normalized_matrix[, -1])
+rownames(expression_data) <- normalized_matrix$hgnc_symbol  # Assign gene names as row names
+
+# Create the design matrix including both patient and condition
+model_matrix <- model.matrix(~ patient + condition, data = design)
+
+# Check the design matrix
+print(model_matrix)
+```
+
+
+### Fitting linear models using limma lmFit
+```{r eval=TRUE, message=FALSE}
+
+## Fit Linear models and perform differential expression analysis
+# Apply the lmFit function to fit the linear model
+fit <- limma::lmFit(expression_data, model_matrix)
+
+# Use eBayes to compute moderated t-statistics, F-statistics, and log-odds of differential expression
+fit <- limma::eBayes(fit)
+
+# View the top differentially expressed genes
+limma::topTable(fit, coef = ncol(model_matrix),
+                adjust.method = "BH") 
+
+# Extract the results, adjusting for BH
+de_results <- limma::topTable(fit, coef = ncol(model_matrix), adjust = "BH", number=nrow(expression_data))
+
+# Get number of genes with P value < 0.05
+sprintf("Number of genes with p > 0.05: %d", length(which(de_results$P.Value < 0.05)))
+
+# View significant genes (e.g., FDR < 0.05)
+sprintf("Number of genes that pass correction: %d", length(which(de_results$adj.P.Val < 0.05)))
+sig_genes <- de_results[de_results$adj.P.Val < 0.05, ]
+print(sig_genes)
+
+# Save significant DE genes to a CSV file
+write.csv(sig_genes, "significant_DE_genes.csv")
+
+# Create a volcano plot
+plot(de_results$logFC, -log10(de_results$P.Value), pch = 20, main = "Volcano plot")
+
+```
+
+## Fitting models using edgeR
+```{r eval=TRUE, message=FALSE}
+dge_file = "post_norm_dge.rds"
+if (!file.exists(dge_file)) {
+  download.file(
+    url = "https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A2_KojiWong/post_norm_dge.rds",
+    destfile = dge_file
+  )
+}
+dge <- readRDS(dge_file)
+
+d <- edgeR::estimateDisp(dge, model_matrix)
+
+# Fitting the data
+fit <- edgeR::glmQLFit(d, model_matrix)
+
+# Calculate differential expression using the Quasi likelihood model
+qlf.GFPnegative_vs_GFPpositive <- edgeR::glmQLFTest(fit, coef="conditionGFPpositive")
+
+qlf_output_hits <- edgeR::topTags(qlf.GFPnegative_vs_GFPpositive,
+                                  sort.by = "PValue",
+                                  n = nrow(normalized_matrix))
+```
+
+Now we can see the comparisons of limma vs edgeR in the number of genes with p value less than 0.05 and that pass correction.
+```{r eval=TRUE, message=TRUE}
+sprintf("Number of genes with P < 0.05 (edgeR): %d", length(which(qlf_output_hits$table$PValue < 0.05)))
+sprintf("Number of genes that pass correction (edgeR): %d", length(which(qlf_output_hits$table$FDR < 0.05)))
+```
+
+```{r eval=TRUE, message=TRUE}
+# Create a volcano plot
+plot(de_results$logFC, -log10(de_results$P.Value), pch = 20, main = "Volcano plot")
+```
