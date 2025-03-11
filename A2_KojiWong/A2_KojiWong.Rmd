@@ -7,6 +7,7 @@ output:
     html_document:
         toc: true
         toc_float: true
+        fig_caption: yes
         number_sections: true
         theme: cosmo
         highlight: tango
@@ -21,16 +22,22 @@ nocite: '@*'
 # install dependencies
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
+
 if (!require("tools", quietly = TRUE))
   install.packages("tools")
+
 if (!requireNamespace("edgeR", quietly = TRUE))
   BiocManager::install("edgeR")
+
 if (!requireNamespace("limma", quietly = TRUE))
   BiocManager::install("limma")
+
+if (!requireNamespace("gprofiler2", quietly = TRUE))
+    BiocManager::install("gprofiler2")
 ```
 
 # Introduction
-
+In our last assignment, we performed data preprocessing, filtering, and normalization on a GEO dataset. Particularly, this GEO dataset was 
 
 ## Getting our normalized count data
 ```{r eval = TRUE, message = TRUE}
@@ -70,7 +77,7 @@ rownames(expression_data) <- normalized_matrix$hgnc_symbol  # Assign gene names 
 model_matrix <- model.matrix(~ patient + condition, data = design)
 
 # Check the design matrix
-print(model_matrix)
+print(head(model_matrix))
 ```
 
 
@@ -89,25 +96,26 @@ limma::topTable(fit, coef = ncol(model_matrix),
                 adjust.method = "BH") 
 
 # Extract the results, adjusting for BH
-de_results <- limma::topTable(fit, coef = ncol(model_matrix), adjust = "BH", number=nrow(expression_data))
+limma_de_results <- limma::topTable(fit, coef = ncol(model_matrix), adjust = "BH", number=nrow(expression_data))
 
 # Get number of genes with P value < 0.05
-sprintf("Number of genes with p > 0.05: %d", length(which(de_results$P.Value < 0.05)))
+sprintf("Number of genes with p > 0.05: %d", length(which(limma_de_results$P.Value < 0.05)))
 
 # View significant genes (e.g., FDR < 0.05)
-sprintf("Number of genes that pass correction: %d", length(which(de_results$adj.P.Val < 0.05)))
-sig_genes <- de_results[de_results$adj.P.Val < 0.05, ]
+sprintf("Number of genes that pass correction: %d", length(which(limma_de_results$adj.P.Val < 0.05)))
+sig_genes <- limma_de_results[limma_de_results$adj.P.Val < 0.05, ]
 print(sig_genes)
 
 # Save significant DE genes to a CSV file
 write.csv(sig_genes, "significant_DE_genes.csv")
 
 # Create a volcano plot
-plot(de_results$logFC, -log10(de_results$P.Value), pch = 20, main = "Volcano plot")
+plot(limma_de_results$logFC, -log10(limma_de_results$P.Value), pch = 20, main = "Volcano plot")
 
 ```
 
 ## Fitting models using edgeR
+In the previous assignment, I created a DGEList object off the normalized count data. This step is to bring it back in. this DGEList object stores expression data along with sample groupings and normalization factors. 
 ```{r eval=TRUE, message=FALSE}
 dge_file = "post_norm_dge.rds"
 if (!file.exists(dge_file)) {
@@ -117,15 +125,22 @@ if (!file.exists(dge_file)) {
   )
 }
 dge <- readRDS(dge_file)
+```
 
+The next step is to estimate dispersion. This step is necessary to account for any biological variability between replicates. Dispersion tell us the variability of what is expected versus what is due to random sampling. 
+```{r eval=TRUE, message=FALSE}
 d <- edgeR::estimateDisp(dge, model_matrix)
+```
 
+Next we fit a generalized linear model (GLM) to model the relationship between gene expression and experimental factors such as condition and patient. In this case, we do a QLFTest to compare conditions of GFPpositive versus GFPnegative.
+```{r eval=TRUE, message=FALSE}
 # Fitting the data
 fit <- edgeR::glmQLFit(d, model_matrix)
 
 # Calculate differential expression using the Quasi likelihood model
 qlf.GFPnegative_vs_GFPpositive <- edgeR::glmQLFTest(fit, coef="conditionGFPpositive")
 
+# Extract DEGs
 qlf_output_hits <- edgeR::topTags(qlf.GFPnegative_vs_GFPpositive,
                                   sort.by = "PValue",
                                   n = nrow(normalized_matrix))
@@ -137,7 +152,45 @@ sprintf("Number of genes with P < 0.05 (edgeR): %d", length(which(qlf_output_hit
 sprintf("Number of genes that pass correction (edgeR): %d", length(which(qlf_output_hits$table$FDR < 0.05)))
 ```
 
-```{r eval=TRUE, message=TRUE}
-# Create a volcano plot
-plot(de_results$logFC, -log10(de_results$P.Value), pch = 20, main = "Volcano plot")
+This contrasts the numbers we saw with limma where the number of genes with p < 0.05 was 2343 and there was only 1 gene that passed correction. We will proceed with edgeR for the sake of DE analysis.
+
+### Plotting
+We plot a volcano plot to visualize the fold change versus p value.
+```{r eval=TRUE, message=TRUE, fig.cap="Figure 1. This graph shows all the differentially expressed genes on a volcano plot. Significant genes are highlighted in red. Significant genes with a logFC > 0 are upregulated and logFC < 0 are downregulated."}
+# Load necessary libraries
+library(ggplot2)
+
+# Extract the results table from topTags output
+de_results <- as.data.frame(qlf_output_hits$table)
+
+# Add a column to indicate significance based on adjusted p-value threshold (e.g., < 0.05)
+de_results$significant <- ifelse(de_results$FDR < 0.05, "Significant", "Not Significant")
+
+# Create volcano plot
+ggplot(de_results, aes(x = logFC, y = -log10(PValue))) +
+  geom_point(aes(color = significant), size = 2) +
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "gray")) +
+  theme_minimal() +
+  labs(title = "Volcano Plot of Differentially Expressed Genes",
+       x = "Log2 Fold Change",
+       y = "-log10(P-Value)") +
+  theme(legend.position = "right") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "blue")  # Optional threshold line
+
 ```
+
+# Gene List Enrichment Analysis
+Gene list enrichment analysis is a common task in bioinformatics that helps identify biological pathways, processes, or functions that are overrepresented in a given gene list. We start with a list of genes and genesets/pathways from an annotation database.
+
+
+## Thresholded list
+Chose this method because it is convenient and a good beginner tool to learn this kind of analysis.
+
+We will be using the Kolmogorov-Smirnov (KS) Test for enchriment test.
+
+First we separate the gene list by upregulated genes and down regulated genes. We can do this by using the log fold change and p-value. If a gene has log fold change less than 0 and p-value less than 0.05, it is indicative of a downregulated gene while a gene with log fold change greater than 0 and p-value less than 0.05 is indicative of an upregulated gene.
+```{r eval = TRUE, message=FALSE}
+up_reg_genes <- which(qlf_output_hits$table$PValue < 0.05 & qlf_output_hits$table$logFC > 0)
+```
+
+# Works Cited

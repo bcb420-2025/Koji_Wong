@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Koji Wong" />
+
+<meta name="date" content="2025-03-11" />
+
+<title>Assignment 2: Gene Expression Analysis and Preliminary ORA</title>
+
+<script src="A2_KojiWong_files/header-attrs-2.29/header-attrs.js"></script>
+<script src="A2_KojiWong_files/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="A2_KojiWong_files/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="A2_KojiWong_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="A2_KojiWong_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="A2_KojiWong_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="A2_KojiWong_files/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="A2_KojiWong_files/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="A2_KojiWong_files/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="A2_KojiWong_files/navigation-1.1/tabsets.js"></script>
+<script src="A2_KojiWong_files/navigation-1.1/codefolding.js"></script>
+<link href="A2_KojiWong_files/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="A2_KojiWong_files/pagedtable-1.1/js/pagedtable.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  background-color: #f8f8f8; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ef2929; } /* Alert */
+code span.an { color: #8f5902; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #204a87; } /* Attribute */
+code span.bn { color: #0000cf; } /* BaseN */
+code span.cf { color: #204a87; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4e9a06; } /* Char */
+code span.cn { color: #8f5902; } /* Constant */
+code span.co { color: #8f5902; font-style: italic; } /* Comment */
+code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #8f5902; font-weight: bold; font-style: italic; } /* Documentation */
+code span.dt { color: #204a87; } /* DataType */
+code span.dv { color: #0000cf; } /* DecVal */
+code span.er { color: #a40000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #0000cf; } /* Float */
+code span.fu { color: #204a87; font-weight: bold; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #8f5902; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #204a87; font-weight: bold; } /* Keyword */
+code span.op { color: #ce5c00; font-weight: bold; } /* Operator */
+code span.ot { color: #8f5902; } /* Other */
+code span.pp { color: #8f5902; font-style: italic; } /* Preprocessor */
+code span.sc { color: #ce5c00; font-weight: bold; } /* SpecialChar */
+code span.ss { color: #4e9a06; } /* SpecialString */
+code span.st { color: #4e9a06; } /* String */
+code span.va { color: #000000; } /* Variable */
+code span.vs { color: #4e9a06; } /* VerbatimString */
+code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } /* Warning */
+
+.sourceCode .row {
+  width: 100%;
+}
+.sourceCode {
+  overflow-x: auto;
+}
+.code-folding-btn {
+  margin-right: -30px;
+}
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">
+/* for pandoc --citeproc since 2.11 */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}
+</style>
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Assignment 2: Gene Expression Analysis and
+Preliminary ORA</h1>
+<h4 class="author">Koji Wong</h4>
+<h4 class="date">03/11/2025</h4>
+
+</div>
+
+
+<div id="set-up" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> Set Up</h1>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># install dependencies</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;BiocManager&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;BiocManager&quot;</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;tools&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">&quot;tools&quot;</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;edgeR&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>  BiocManager<span class="sc">::</span><span class="fu">install</span>(<span class="st">&quot;edgeR&quot;</span>)</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;limma&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>  BiocManager<span class="sc">::</span><span class="fu">install</span>(<span class="st">&quot;limma&quot;</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;gprofiler2&quot;</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>    BiocManager<span class="sc">::</span><span class="fu">install</span>(<span class="st">&quot;gprofiler2&quot;</span>)</span></code></pre></div>
+</div>
+<div id="introduction" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> Introduction</h1>
+<p>In our last assignment, we performed data preprocessing, filtering,
+and normalization on a GEO dataset. Particularly, this GEO dataset
+was</p>
+<div id="getting-our-normalized-count-data" class="section level2"
+number="2.1">
+<h2><span class="header-section-number">2.1</span> Getting our
+normalized count data</h2>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Getting the normalized RNASeq counts from Assignment 1</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>destfile <span class="ot">=</span> <span class="st">&quot;normalized_matrix.rds&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(destfile)) {</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="fu">download.file</span>(</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>    <span class="at">url =</span> <span class="st">&quot;https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A2_KojiWong/normalized_matrix.rds&quot;</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>    <span class="at">destfile =</span> destfile</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  )</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>}</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="co"># Load in the normalized count matrix from our rds object file</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>normalized_matrix <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(destfile)</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="fu">head</span>(normalized_matrix)</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["hgnc_symbol"],"name":[1],"type":["chr"],"align":["left"]},{"label":["p8-GFPnegative"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["p8-GFPpositive"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["p8-negcontrol"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["p9-GFPnegative"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["p9-GFPpositive"],"name":[6],"type":["dbl"],"align":["right"]},{"label":["p9-negcontrol"],"name":[7],"type":["dbl"],"align":["right"]},{"label":["p10-GFP"],"name":[8],"type":["dbl"],"align":["right"]},{"label":["p10-GFPpositive"],"name":[9],"type":["dbl"],"align":["right"]},{"label":["p10-negcontrol"],"name":[10],"type":["dbl"],"align":["right"]},{"label":["p11-GFP"],"name":[11],"type":["dbl"],"align":["right"]},{"label":["p11-GFPpositive"],"name":[12],"type":["dbl"],"align":["right"]},{"label":["p11-negcontrol"],"name":[13],"type":["dbl"],"align":["right"]},{"label":["p12-GFP"],"name":[14],"type":["dbl"],"align":["right"]},{"label":["p12-GFPpositive"],"name":[15],"type":["dbl"],"align":["right"]},{"label":["p12-negcontrol"],"name":[16],"type":["dbl"],"align":["right"]}],"data":[{"1":"A1BG","2":"-1.5625170","3":"-0.7009547","4":"-1.2798322","5":"-0.5437205","6":"-0.5939528","7":"-0.7234773","8":"-1.8731068","9":"-1.5306548","10":"-1.3354924","11":"-1.5253851","12":"-1.82937424","13":"-1.294467","14":"-0.7581711","15":"-1.3590118","16":"-0.9857297","_rn_":"A1BG"},{"1":"A1BG-AS1","2":"2.4537148","3":"1.7776748","4":"1.9679435","5":"2.2628191","6":"2.1056035","7":"2.4618003","8":"1.1616979","9":"1.2190798","10":"1.1266243","11":"1.8616288","12":"1.56226628","13":"1.091480","14":"1.1238932","15":"1.2459756","16":"1.0356131","_rn_":"A1BG-AS1"},{"1":"A2M","2":"-2.0439972","3":"-3.3453808","4":"-2.7309173","5":"-2.6697976","6":"-2.7401164","7":"-3.3453808","8":"-3.3453808","9":"-3.3453808","10":"-2.3387810","11":"-2.7545055","12":"-2.26404815","13":"-2.420752","14":"-1.0537291","15":"-3.3453808","16":"-2.4763050","_rn_":"A2M"},{"1":"A2M-AS1","2":"-0.6739994","3":"-0.8423217","4":"-0.5712002","5":"-1.5845341","6":"-0.8366179","7":"-1.3951992","8":"-1.0255245","9":"-1.0151997","10":"-1.3354924","11":"-1.0093025","12":"-1.49579133","13":"-1.146012","14":"-1.2278291","15":"-1.1579736","16":"-0.8740090","_rn_":"A2M-AS1"},{"1":"A2ML1","2":"-1.7832636","3":"-1.3752492","4":"-1.7020075","5":"-0.4251511","6":"-0.1219395","7":"-1.9025492","8":"-0.4951692","9":"-0.1662887","10":"-0.8751652","11":"0.1301199","12":"0.07036591","13":"-1.646945","14":"-0.8983946","15":"-0.5536147","16":"-1.2390426","_rn_":"A2ML1"},{"1":"A4GALT","2":"4.6454873","3":"5.0864450","4":"4.0851495","5":"4.4254234","6":"5.3619993","7":"3.9890890","8":"4.0105739","9":"4.3266555","10":"3.3750224","11":"3.4794836","12":"3.81177111","13":"3.314955","14":"3.5221663","15":"4.2063678","16":"3.5616891","_rn_":"A4GALT"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+</div>
+</div>
+<div id="differential-expression-analysis" class="section level1"
+number="3">
+<h1><span class="header-section-number">3</span> Differential Expression
+Analysis</h1>
+<div id="creating-a-design-matrix" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Creating a Design
+Matrix</h2>
+<p>We create a design matrix as it defines how the samples are
+structured across conditions, like GFPnegative, GFPpositive, and
+negative control as well as factors like which patient it is. It tells
+the statistical model what comparisons to make and which variables to
+control for.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Column names of your normalized matrix, except the first column (hgnc_symbol)</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>sample_names <span class="ot">&lt;-</span> <span class="fu">colnames</span>(normalized_matrix)[<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># Extract conditions and patients</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>conditions <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">&quot;GFPnegative&quot;</span>, <span class="st">&quot;GFPpositive&quot;</span>, <span class="st">&quot;negcontrol&quot;</span>), <span class="at">times =</span> <span class="dv">5</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>patients <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">&quot;p8&quot;</span>, <span class="st">&quot;p9&quot;</span>, <span class="st">&quot;p10&quot;</span>, <span class="st">&quot;p11&quot;</span>, <span class="st">&quot;p12&quot;</span>), <span class="at">each =</span> <span class="dv">3</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co"># Create a design data frame</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>design <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">sample =</span> sample_names, <span class="at">patient =</span> patients, <span class="at">condition =</span> conditions)</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co"># Remove the gene symbols column and keep expression values</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>expression_data <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(normalized_matrix[, <span class="sc">-</span><span class="dv">1</span>])</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="fu">rownames</span>(expression_data) <span class="ot">&lt;-</span> normalized_matrix<span class="sc">$</span>hgnc_symbol  <span class="co"># Assign gene names as row names</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co"># Create the design matrix including both patient and condition</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>model_matrix <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(<span class="sc">~</span> patient <span class="sc">+</span> condition, <span class="at">data =</span> design)</span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co"># Check the design matrix</span></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">head</span>(model_matrix))</span></code></pre></div>
+<pre><code>##   (Intercept) patientp11 patientp12 patientp8 patientp9 conditionGFPpositive
+## 1           1          0          0         1         0                    0
+## 2           1          0          0         1         0                    1
+## 3           1          0          0         1         0                    0
+## 4           1          0          0         0         1                    0
+## 5           1          0          0         0         1                    1
+## 6           1          0          0         0         1                    0
+##   conditionnegcontrol
+## 1                   0
+## 2                   0
+## 3                   1
+## 4                   0
+## 5                   0
+## 6                   1</code></pre>
+<div id="fitting-linear-models-using-limma-lmfit" class="section level3"
+number="3.1.1">
+<h3><span class="header-section-number">3.1.1</span> Fitting linear
+models using limma lmFit</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="do">## Fit Linear models and perform differential expression analysis</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># Apply the lmFit function to fit the linear model</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>fit <span class="ot">&lt;-</span> limma<span class="sc">::</span><span class="fu">lmFit</span>(expression_data, model_matrix)</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># Use eBayes to compute moderated t-statistics, F-statistics, and log-odds of differential expression</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>fit <span class="ot">&lt;-</span> limma<span class="sc">::</span><span class="fu">eBayes</span>(fit)</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># View the top differentially expressed genes</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>limma<span class="sc">::</span><span class="fu">topTable</span>(fit, <span class="at">coef =</span> <span class="fu">ncol</span>(model_matrix),</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>                <span class="at">adjust.method =</span> <span class="st">&quot;BH&quot;</span>) </span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["logFC"],"name":[1],"type":["dbl"],"align":["right"]},{"label":["AveExpr"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["t"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["P.Value"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["adj.P.Val"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["B"],"name":[6],"type":["dbl"],"align":["right"]}],"data":[{"1":"0.8252507","2":"1.250905","3":"10.080237","4":"1.576051e-06","5":"0.02972904","6":"4.405972","_rn_":"MT1X"},{"1":"1.2721437","2":"-1.943308","3":"8.165303","4":"1.035392e-05","5":"0.06966335","6":"3.178983","_rn_":"RAET1L"},{"1":"1.3073201","2":"-2.838978","3":"8.009139","4":"1.225276e-05","5":"0.06966335","6":"3.060648","_rn_":"LINC01393"},{"1":"0.9376730","2":"-2.515985","3":"7.838357","4":"1.477248e-05","5":"0.06966335","6":"2.927652","_rn_":"TAS2R15P"},{"1":"-0.4877109","2":"4.866844","3":"-7.419668","4":"2.367479e-05","5":"0.08337391","6":"2.585084","_rn_":"FURIN"},{"1":"-0.7263077","2":"1.686368","3":"-7.227120","4":"2.960175e-05","5":"0.08337391","6":"2.419323","_rn_":"RIN3"},{"1":"-1.0263131","2":"-2.588471","3":"-7.189446","4":"3.093980e-05","5":"0.08337391","6":"2.386265","_rn_":"SDHDP6"},{"1":"-0.5385981","2":"6.156719","3":"-7.000435","4":"3.871970e-05","5":"0.09129622","6":"2.217241","_rn_":"RERE"},{"1":"-0.8252373","2":"3.957352","3":"-6.713210","4":"5.489263e-05","5":"0.10084151","6":"1.950030","_rn_":"FRAS1"},{"1":"-0.4586961","2":"5.189556","3":"-6.708820","4":"5.519051e-05","5":"0.10084151","6":"1.945847","_rn_":"KIAA1549"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Extract the results, adjusting for BH</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>limma_de_results <span class="ot">&lt;-</span> limma<span class="sc">::</span><span class="fu">topTable</span>(fit, <span class="at">coef =</span> <span class="fu">ncol</span>(model_matrix), <span class="at">adjust =</span> <span class="st">&quot;BH&quot;</span>, <span class="at">number=</span><span class="fu">nrow</span>(expression_data))</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># Get number of genes with P value &lt; 0.05</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="fu">sprintf</span>(<span class="st">&quot;Number of genes with p &gt; 0.05: %d&quot;</span>, <span class="fu">length</span>(<span class="fu">which</span>(limma_de_results<span class="sc">$</span>P.Value <span class="sc">&lt;</span> <span class="fl">0.05</span>)))</span></code></pre></div>
+<pre><code>## [1] &quot;Number of genes with p &gt; 0.05: 2343&quot;</code></pre>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># View significant genes (e.g., FDR &lt; 0.05)</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">sprintf</span>(<span class="st">&quot;Number of genes that pass correction: %d&quot;</span>, <span class="fu">length</span>(<span class="fu">which</span>(limma_de_results<span class="sc">$</span>adj.P.Val <span class="sc">&lt;</span> <span class="fl">0.05</span>)))</span></code></pre></div>
+<pre><code>## [1] &quot;Number of genes that pass correction: 1&quot;</code></pre>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>sig_genes <span class="ot">&lt;-</span> limma_de_results[limma_de_results<span class="sc">$</span>adj.P.Val <span class="sc">&lt;</span> <span class="fl">0.05</span>, ]</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="fu">print</span>(sig_genes)</span></code></pre></div>
+<pre><code>##          logFC  AveExpr        t      P.Value  adj.P.Val        B
+## MT1X 0.8252507 1.250905 10.08024 1.576051e-06 0.02972904 4.405972</code></pre>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># Save significant DE genes to a CSV file</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">write.csv</span>(sig_genes, <span class="st">&quot;significant_DE_genes.csv&quot;</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># Create a volcano plot</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="fu">plot</span>(limma_de_results<span class="sc">$</span>logFC, <span class="sc">-</span><span class="fu">log10</span>(limma_de_results<span class="sc">$</span>P.Value), <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">main =</span> <span class="st">&quot;Volcano plot&quot;</span>)</span></code></pre></div>
+<p><img src="A2_KojiWong_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+</div>
+</div>
+<div id="fitting-models-using-edger" class="section level2"
+number="3.2">
+<h2><span class="header-section-number">3.2</span> Fitting models using
+edgeR</h2>
+<p>In the previous assignment, I created a DGEList object off the
+normalized count data. This step is to bring it back in. this DGEList
+object stores expression data along with sample groupings and
+normalization factors.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>dge_file <span class="ot">=</span> <span class="st">&quot;post_norm_dge.rds&quot;</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(dge_file)) {</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="fu">download.file</span>(</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>    <span class="at">url =</span> <span class="st">&quot;https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A2_KojiWong/post_norm_dge.rds&quot;</span>,</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>    <span class="at">destfile =</span> dge_file</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>  )</span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>}</span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>dge <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(dge_file)</span></code></pre></div>
+<p>The next step is to estimate dispersion. This step is necessary to
+account for any biological variability between replicates. Dispersion
+tell us the variability of what is expected versus what is due to random
+sampling.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>d <span class="ot">&lt;-</span> edgeR<span class="sc">::</span><span class="fu">estimateDisp</span>(dge, model_matrix)</span></code></pre></div>
+<p>Next we fit a generalized linear model (GLM) to model the
+relationship between gene expression and experimental factors such as
+condition and patient. In this case, we do a QLFTest to compare
+conditions of GFPpositive versus GFPnegative.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="co"># Fitting the data</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>fit <span class="ot">&lt;-</span> edgeR<span class="sc">::</span><span class="fu">glmQLFit</span>(d, model_matrix)</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="co"># Calculate differential expression using the Quasi likelihood model</span></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>qlf.GFPnegative_vs_GFPpositive <span class="ot">&lt;-</span> edgeR<span class="sc">::</span><span class="fu">glmQLFTest</span>(fit, <span class="at">coef=</span><span class="st">&quot;conditionGFPpositive&quot;</span>)</span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co"># Extract DEGs</span></span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>qlf_output_hits <span class="ot">&lt;-</span> edgeR<span class="sc">::</span><span class="fu">topTags</span>(qlf.GFPnegative_vs_GFPpositive,</span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>                                  <span class="at">sort.by =</span> <span class="st">&quot;PValue&quot;</span>,</span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>                                  <span class="at">n =</span> <span class="fu">nrow</span>(normalized_matrix))</span></code></pre></div>
+<p>Now we can see the comparisons of limma vs edgeR in the number of
+genes with p value less than 0.05 and that pass correction.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">sprintf</span>(<span class="st">&quot;Number of genes with P &lt; 0.05 (edgeR): %d&quot;</span>, <span class="fu">length</span>(<span class="fu">which</span>(qlf_output_hits<span class="sc">$</span>table<span class="sc">$</span>PValue <span class="sc">&lt;</span> <span class="fl">0.05</span>)))</span></code></pre></div>
+<pre><code>## [1] &quot;Number of genes with P &lt; 0.05 (edgeR): 1683&quot;</code></pre>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="fu">sprintf</span>(<span class="st">&quot;Number of genes that pass correction (edgeR): %d&quot;</span>, <span class="fu">length</span>(<span class="fu">which</span>(qlf_output_hits<span class="sc">$</span>table<span class="sc">$</span>FDR <span class="sc">&lt;</span> <span class="fl">0.05</span>)))</span></code></pre></div>
+<pre><code>## [1] &quot;Number of genes that pass correction (edgeR): 167&quot;</code></pre>
+<p>This contrasts the numbers we saw with limma where the number of
+genes with p &lt; 0.05 was 2343 and there was only 1 gene that passed
+correction. We will proceed with edgeR for the sake of DE analysis.</p>
+<div id="plotting" class="section level3" number="3.2.1">
+<h3><span class="header-section-number">3.2.1</span> Plotting</h3>
+<p>We plot a volcano plot to visualize the fold change versus p
+value.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="co"># Load necessary libraries</span></span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a><span class="co"># Extract the results table from topTags output</span></span>
+<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a>de_results <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(qlf_output_hits<span class="sc">$</span>table)</span>
+<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a></span>
+<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a><span class="co"># Add a column to indicate significance based on adjusted p-value threshold (e.g., &lt; 0.05)</span></span>
+<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a>de_results<span class="sc">$</span>significant <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(de_results<span class="sc">$</span>FDR <span class="sc">&lt;</span> <span class="fl">0.05</span>, <span class="st">&quot;Significant&quot;</span>, <span class="st">&quot;Not Significant&quot;</span>)</span>
+<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a></span>
+<span id="cb20-10"><a href="#cb20-10" tabindex="-1"></a><span class="co"># Create volcano plot</span></span>
+<span id="cb20-11"><a href="#cb20-11" tabindex="-1"></a><span class="fu">ggplot</span>(de_results, <span class="fu">aes</span>(<span class="at">x =</span> logFC, <span class="at">y =</span> <span class="sc">-</span><span class="fu">log10</span>(PValue))) <span class="sc">+</span></span>
+<span id="cb20-12"><a href="#cb20-12" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">color =</span> significant), <span class="at">size =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb20-13"><a href="#cb20-13" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Significant&quot;</span> <span class="ot">=</span> <span class="st">&quot;red&quot;</span>, <span class="st">&quot;Not Significant&quot;</span> <span class="ot">=</span> <span class="st">&quot;gray&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb20-14"><a href="#cb20-14" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb20-15"><a href="#cb20-15" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Volcano Plot of Differentially Expressed Genes&quot;</span>,</span>
+<span id="cb20-16"><a href="#cb20-16" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">&quot;Log2 Fold Change&quot;</span>,</span>
+<span id="cb20-17"><a href="#cb20-17" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;-log10(P-Value)&quot;</span>) <span class="sc">+</span></span>
+<span id="cb20-18"><a href="#cb20-18" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;right&quot;</span>) <span class="sc">+</span></span>
+<span id="cb20-19"><a href="#cb20-19" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="sc">-</span><span class="fu">log10</span>(<span class="fl">0.05</span>), <span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>, <span class="at">color =</span> <span class="st">&quot;blue&quot;</span>)  <span class="co"># Optional threshold line</span></span></code></pre></div>
+<div class="figure">
+<img src="A2_KojiWong_files/figure-html/unnamed-chunk-9-1.png" alt="Figure 1. This graph shows all the differentially expressed genes on a volcano plot. Significant genes are highlighted in red. Significant genes with a logFC &gt; 0 are upregulated and logFC &lt; 0 are downregulated." width="672" />
+<p class="caption">
+Figure 1. This graph shows all the differentially expressed genes on a
+volcano plot. Significant genes are highlighted in red. Significant
+genes with a logFC &gt; 0 are upregulated and logFC &lt; 0 are
+downregulated.
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="gene-list-enrichment-analysis" class="section level1"
+number="4">
+<h1><span class="header-section-number">4</span> Gene List Enrichment
+Analysis</h1>
+<p>Gene list enrichment analysis is a common task in bioinformatics that
+helps identify biological pathways, processes, or functions that are
+overrepresented in a given gene list. We start with a list of genes and
+genesets/pathways from an annotation database.</p>
+<div id="thresholded-list" class="section level2" number="4.1">
+<h2><span class="header-section-number">4.1</span> Thresholded list</h2>
+<p>Chose this method because it is convenient and a good beginner tool
+to learn this kind of analysis.</p>
+<p>We will be using the Kolmogorov-Smirnov (KS) Test for enchriment
+test.</p>
+<p>First we separate the gene list by upregulated genes and down
+regulated genes. We can do this by using the log fold change and
+p-value. If a gene has log fold change less than 0 and p-value less than
+0.05, it is indicative of a downregulated gene while a gene with log
+fold change greater than 0 and p-value less than 0.05 is indicative of
+an upregulated gene.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>up_reg_genes <span class="ot">&lt;-</span> <span class="fu">which</span>(qlf_output_hits<span class="sc">$</span>table<span class="sc">$</span>PValue <span class="sc">&lt;</span> <span class="fl">0.05</span> <span class="sc">&amp;</span> qlf_output_hits<span class="sc">$</span>table<span class="sc">$</span>logFC <span class="sc">&gt;</span> <span class="dv">0</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="works-cited" class="section level1 unnumbered">
+<h1 class="unnumbered">Works Cited</h1>
+<div id="refs" class="references csl-bib-body hanging-indent"
+entry-spacing="0">
+<div id="ref-edger" class="csl-entry">
+Chen, Yunshun, Aaron A T Lun, and Gordon K Smyth. 2016. <span>“From
+Reads to Genes to Pathways: Differential Expression Analysis of RNA-Seq
+Experiments Using Rsubread and the edgeR Quasi-Likelihood
+Pipeline.”</span> <em>F1000Research</em> 5: 1438. <a
+href="https://doi.org/10.12688/f1000research.8987.2">https://doi.org/10.12688/f1000research.8987.2</a>.
+</div>
+<div id="ref-geoquery" class="csl-entry">
+Davis, Sean, and Paul Meltzer. 2007. <span>“GEOquery: A Bridge Between
+the Gene Expression Omnibus (GEO) and BioConductor.”</span>
+<em>Bioinformatics</em> 14: 1846–47.
+</div>
+<div id="ref-gprofiler" class="csl-entry">
+Liis Kolberg, Ivan Kuzmin, Uku Raudvere. 2023.
+<em>G:profiler—Interoperable Web Service for Functional Enrichment
+Analysis and Gene Identifier Mapping</em>. <a
+href="https://doi.org/10.1093/nar/gkad347">https://doi.org/10.1093/nar/gkad347</a>.
+</div>
+<div id="ref-biocmanager" class="csl-entry">
+Morgan, Martin, and Marcel Ramos. 2023. <em>BiocManager: Access the
+Bioconductor Project Package Repository</em>. <a
+href="https://CRAN.R-project.org/package=BiocManager">https://CRAN.R-project.org/package=BiocManager</a>.
+</div>
+<div id="ref-ggplot2" class="csl-entry">
+Wickham, Hadley. 2016. <em>Ggplot2: Elegant Graphics for Data
+Analysis</em>. <a
+href="https://ggplot2.tidyverse.org">https://ggplot2.tidyverse.org</a>.
+</div>
+<div id="ref-knitr" class="csl-entry">
+Xie, Yihui. 2014. <span>“Knitr: A Comprehensive Tool for Reproducible
+Research in <span>R</span>.”</span> In <em>Implementing Reproducible
+Computational Research</em>, edited by Victoria Stodden, Friedrich
+Leisch, and Roger D. Peng. Chapman; Hall/CRC.
+</div>
+<div id="ref-zheng2024" class="csl-entry">
+Zheng, Christy, Kaelyn O. Allen, Tianrui Liu, Natalia M. Solodin, Mark
+B. Meyer, Kelley Salem, Phillipos K. Tsourkas, et al. 2024.
+<span>“Elevated <span>GRHL2</span> Imparts Plasticity in
+<span>ER</span>-Positive Breast Cancer Cells.”</span> <em>Cancers</em>
+16 (16): 2906. <a
+href="https://doi.org/10.3390/cancers16162906">https://doi.org/10.3390/cancers16162906</a>.
+</div>
+</div>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
