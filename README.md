@@ -3,6 +3,7 @@ bcb420-2025 repo for Koji Wong
 
 ## A1
 The RMarkdown in HTML for A1 can be found below.
+
 <a href=https://github.com/bcb420-2025/Koji_Wong/blob/main/A1_KojiWong/A1_KojiWong.html>A1 HTML</a>
 
 To view the RMarkdown, follow these steps.
