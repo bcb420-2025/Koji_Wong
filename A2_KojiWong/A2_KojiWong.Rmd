@@ -13,12 +13,12 @@ output:
         highlight: tango
         code_folding: show
         df_print: paged
-        self_contained: no
+        self_contained: yes
 nocite: '@*'
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.path = "figures/")
 
-# Set Up
-```{r eval=TRUE, message=FALSE}
 # install dependencies
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
@@ -32,14 +32,29 @@ if (!requireNamespace("edgeR", quietly = TRUE))
 if (!requireNamespace("limma", quietly = TRUE))
   BiocManager::install("limma")
 
-if (!requireNamespace("gprofiler2", quietly = TRUE))
-    BiocManager::install("gprofiler2")
+if (!requireNamespace("pheatmap", quietly = TRUE))
+  BiocManager::install("pheatmap")
+
+if (!requireNamespace("ggplot2", quietly = TRUE))
+  BiocManager::install("ggplot2")
+
+if (!requireNamespace("dplyr", quietly = TRUE))
+  BiocManager::install("dplyr")
+
+library(dplyr)
 ```
 
 # Introduction
-In our last assignment, we performed data preprocessing, filtering, and normalization on a GEO dataset. Particularly, this GEO dataset was 
+In our last assignment, we performed data preprocessing, filtering, and normalization on a GEO dataset. Particularly, this GEO dataset was titled "Elevated GRHL2 imparts plasticity in estrogen receptor positive breast cancer cells [RNA-seq]" with the GEO accession GSE272061. This dataset is associated with the 2024 paper by Zheng et al. titled "Elevated GRHL2 Imparts Plasticity in ER-Positive Breast Cancer Cells" which can be obtained [here](https://www.mdpi.com/2072-6694/16/16/2906). This dataset consists of 3 conditions: GFPnegative, GFPpositive, and negative control which was sampled from 5 different patients.
+
+At the start, we found that 57500 genes were in the dataset originally. To create a higher quality dataset, we filtered out genes with low counts to obtain a total of 21975 genes. Next, we mapped the genes to HUGO gene symbols. Some of these genes mapped to empty strings or na, so these were filtered out as well giving us a total of 18863 genes. The count data was then normalized using edgeR which gives us our normalized_matrix that we utilize for analysis in assignment 2. 
+
+This normalized matrix can be obtained [here](https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A2_KojiWong/normalized_matrix.rds) and is downloaded as part of this gene enrichment analysis. Along with that is the DGEList object which can be obtained [here](https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A2_KojiWong/post_norm_dge.rds) which is also used.
+
+# Differential Gene Expression Analysis
 
 ## Getting our normalized count data
+We first obtain our normalized count data from Assignment 1 by downloading the .rds file associated with it.
 ```{r eval = TRUE, message = TRUE}
 # Getting the normalized RNASeq counts from Assignment 1
 destfile = "normalized_matrix.rds"
@@ -53,8 +68,6 @@ if (!file.exists(destfile)) {
 normalized_matrix <- readRDS(destfile)
 head(normalized_matrix)
 ```
-
-# Differential Expression Analysis
 
 ## Creating a Design Matrix
 We create a design matrix as it defines how the samples are structured across conditions, like GFPnegative, GFPpositive, and negative control as well as factors like which patient it is. It tells the statistical model what comparisons to make and which variables to control for.
@@ -81,41 +94,8 @@ print(head(model_matrix))
 ```
 
 
-### Fitting linear models using limma lmFit
-```{r eval=TRUE, message=FALSE}
-
-## Fit Linear models and perform differential expression analysis
-# Apply the lmFit function to fit the linear model
-fit <- limma::lmFit(expression_data, model_matrix)
-
-# Use eBayes to compute moderated t-statistics, F-statistics, and log-odds of differential expression
-fit <- limma::eBayes(fit)
-
-# View the top differentially expressed genes
-limma::topTable(fit, coef = ncol(model_matrix),
-                adjust.method = "BH") 
-
-# Extract the results, adjusting for BH
-limma_de_results <- limma::topTable(fit, coef = ncol(model_matrix), adjust = "BH", number=nrow(expression_data))
-
-# Get number of genes with P value < 0.05
-sprintf("Number of genes with p > 0.05: %d", length(which(limma_de_results$P.Value < 0.05)))
-
-# View significant genes (e.g., FDR < 0.05)
-sprintf("Number of genes that pass correction: %d", length(which(limma_de_results$adj.P.Val < 0.05)))
-sig_genes <- limma_de_results[limma_de_results$adj.P.Val < 0.05, ]
-print(sig_genes)
-
-# Save significant DE genes to a CSV file
-write.csv(sig_genes, "significant_DE_genes.csv")
-
-# Create a volcano plot
-plot(limma_de_results$logFC, -log10(limma_de_results$P.Value), pch = 20, main = "Volcano plot")
-
-```
-
 ## Fitting models using edgeR
-In the previous assignment, I created a DGEList object off the normalized count data. This step is to bring it back in. this DGEList object stores expression data along with sample groupings and normalization factors. 
+In the previous assignment, I also created a DGEList object off the normalized count data. This step is to bring it back in. this DGEList object stores expression data along with sample groupings and normalization factors. 
 ```{r eval=TRUE, message=FALSE}
 dge_file = "post_norm_dge.rds"
 if (!file.exists(dge_file)) {
@@ -127,11 +107,13 @@ if (!file.exists(dge_file)) {
 dge <- readRDS(dge_file)
 ```
 
+## Estimate dispersion
 The next step is to estimate dispersion. This step is necessary to account for any biological variability between replicates. Dispersion tell us the variability of what is expected versus what is due to random sampling. 
 ```{r eval=TRUE, message=FALSE}
 d <- edgeR::estimateDisp(dge, model_matrix)
 ```
 
+## Fitting
 Next we fit a generalized linear model (GLM) to model the relationship between gene expression and experimental factors such as condition and patient. In this case, we do a QLFTest to compare conditions of GFPpositive versus GFPnegative.
 ```{r eval=TRUE, message=FALSE}
 # Fitting the data
@@ -146,17 +128,24 @@ qlf_output_hits <- edgeR::topTags(qlf.GFPnegative_vs_GFPpositive,
                                   n = nrow(normalized_matrix))
 ```
 
-Now we can see the comparisons of limma vs edgeR in the number of genes with p value less than 0.05 and that pass correction.
+Now we can see the number of significant differentially expressed genes and the significant genes that pass correction.
 ```{r eval=TRUE, message=TRUE}
-sprintf("Number of genes with P < 0.05 (edgeR): %d", length(which(qlf_output_hits$table$PValue < 0.05)))
-sprintf("Number of genes that pass correction (edgeR): %d", length(which(qlf_output_hits$table$FDR < 0.05)))
+sprintf("Number of significant differentially expressed genes with P < 0.05 (edgeR): %d", length(which(qlf_output_hits$table$PValue < 0.05)))
+sprintf("Number of significant genes that pass correction using FDR (edgeR): %d", length(which(qlf_output_hits$table$FDR < 0.05)))
 ```
+> 1. Calculate p-values for each of the genes in your expression set. How many genes were significantly differentially expressed? What thresholds did you use and why?
 
-This contrasts the numbers we saw with limma where the number of genes with p < 0.05 was 2343 and there was only 1 gene that passed correction. We will proceed with edgeR for the sake of DE analysis.
+As we can see we found that 1683 genes were significantly differentially expressed. I chose to use 0.05 threshold for p-value as it will indicate that the chance of this gene being differentially expressed is unlikely due to chance. 
+
+> 2. Multiple hypothesis testing - correct your p-values using a multiple hypothesis correction method. Which method did you use? And Why? How many genes passed correction?
+
+Out of the DEGs, 167 passed correction. We chose to use the False Discovery Rate (FDR) as we wanted to remove as many false positives as possible while retaining significant genes.
 
 ### Plotting
-We plot a volcano plot to visualize the fold change versus p value.
-```{r eval=TRUE, message=TRUE, fig.cap="Figure 1. This graph shows all the differentially expressed genes on a volcano plot. Significant genes are highlighted in red. Significant genes with a logFC > 0 are upregulated and logFC < 0 are downregulated."}
+> 3. Show the amount of differentially expressed genes using an MA Plot or a Volcano plot. Highlight genes of interest.
+
+We plot a volcano plot to visualize the fold change versus p value. Highlighted in red are genes that are significantly differentially expressed. Genes on the left of the split on 0 are downregulated genes while genes on the right are upregulated.
+```{r eval=TRUE, message=TRUE, volcano_plot, fig.ext="png", dev = "png", fig.cap="Figure 1. This graph shows all the differentially expressed genes on a volcano plot. Significant genes are highlighted in red. Significant genes with a logFC > 0 are upregulated and logFC < 0 are downregulated."}
 # Load necessary libraries
 library(ggplot2)
 
@@ -179,18 +168,226 @@ ggplot(de_results, aes(x = logFC, y = -log10(PValue))) +
 
 ```
 
+### Heatmap
+> 4. Visualize your top hits using a heatmap. Do you conditions cluster together? Explain why or why not.
+
+To visualize our top hits, we took the top 200 hits sorted by p value and mapped these back with the condition data. 
+```{r eval=TRUE, message=TRUE, heatmap, fig.cap="Figure 2. Top 200 differentially expressed genes (DEGs) for GFP positive versus GFP negative shown across different samples and conditions. At the top of the figure you can see which columns belong to a condition or patient by colour. As we can see, GFP positive genes tend to be more differentially expressed significantly more than negative control or GFP negative since we chose this as our coefficient for QLMTest." }
+# heatmap plot of top 200 DEGs
+top_hits <- qlf_output_hits$table[1:200,]
+
+# drop gene symbols 
+normalized_matrix <- normalized_matrix[,-1]
+# Get the normalized expression values for these top hits
+top_hits_expression <- normalized_matrix[rownames(top_hits), ]
+
+
+# Create a sample annotation data frame
+# Extract condition from sample names
+conditions <- gsub(".*-(.*)", "\\1", colnames(top_hits_expression))
+
+# Group "GFP" and "GFPnegative" together
+conditions[conditions == "GFP"] <- "GFPnegative"
+# Extract patient information from sample names
+patients <- gsub("(p[0-9]+)-.*", "\\1", colnames(top_hits_expression))
+
+# Check the extracted patient information
+print(patients)
+
+# Create the sample annotation data frame
+sample_annotation <- data.frame(
+  Condition = conditions,  # Condition column (GFPnegative, GFPpositive, negcontrol)
+  Patient = patients       # Patient column (p8, p9, p10, p11, p12)
+)
+rownames(sample_annotation) <- colnames(top_hits_expression)
+
+# Check the updated annotation
+print(sample_annotation)
+
+# Define a color scheme for conditions
+condition_colors <- list(
+  Condition = c(GFPnegative = "blue", GFPpositive = "red", negcontrol = "gray"),
+  Patient = c(p8 = "darkgreen", p9 = "orange", p10 = "purple", p11 = "brown", p12 = "pink")
+)
+
+# Check the color scheme
+print(condition_colors)
+pheatmap::pheatmap(top_hits_expression,
+         scale = "row",  # Scale by row (genes) to highlight expression patterns
+         clustering_distance_rows = "euclidean",
+         clustering_distance_cols = "euclidean",
+         clustering_method = "complete",
+         show_rownames = FALSE,  # Hide gene names for clarity
+         annotation_col = sample_annotation,  # Include both Condition and Patient annotations
+         annotation_colors = condition_colors)  # Add custom colors (optional)
+
+```
+
+As we can see in Figure 2, our conditions do tend to cluster together, notably GFP positive and GFP negative. 
+
 # Gene List Enrichment Analysis
 Gene list enrichment analysis is a common task in bioinformatics that helps identify biological pathways, processes, or functions that are overrepresented in a given gene list. We start with a list of genes and genesets/pathways from an annotation database.
 
 
 ## Thresholded list
-Chose this method because it is convenient and a good beginner tool to learn this kind of analysis.
-
-We will be using the Kolmogorov-Smirnov (KS) Test for enchriment test.
+> 1. Which method did you choose and why?
 
 First we separate the gene list by upregulated genes and down regulated genes. We can do this by using the log fold change and p-value. If a gene has log fold change less than 0 and p-value less than 0.05, it is indicative of a downregulated gene while a gene with log fold change greater than 0 and p-value less than 0.05 is indicative of an upregulated gene.
 ```{r eval = TRUE, message=FALSE}
-up_reg_genes <- which(qlf_output_hits$table$PValue < 0.05 & qlf_output_hits$table$logFC > 0)
+# number of significant genes
+sprintf("Number of significant genes (upregulated + downregulated): %d", length(which(qlf_output_hits$table$PValue < 0.05)))
+
+# number of significant upregulated genes
+up_reg_genes <- qlf_output_hits[which(qlf_output_hits$table$PValue < 0.05 & qlf_output_hits$table$logFC > 0),]
+sprintf("Number of upregulated genes: %d", nrow(up_reg_genes))
+
+# number of significant upregulated genes
+down_reg_genes <- qlf_output_hits[which(qlf_output_hits$table$PValue < 0.05 & qlf_output_hits$table$logFC < 0),]
+sprintf("Number of downregulated genes: %d", nrow(down_reg_genes))
+ 
+# Write to file
+write.table(x=up_reg_genes,
+            file=file.path(getwd(), "GFPpositive_GFPnegative_upregulated_genes.txt"),
+            sep="\t", 
+            row.names=FALSE,
+            col.names=FALSE, 
+            quote=FALSE)
+write.table(x=down_reg_genes,
+            file=file.path(getwd(), "GFPpositive_GFPnegative_downregulated_genes.txt"),
+            sep="\t", 
+            row.names=FALSE,
+            col.names=FALSE, 
+            quote=FALSE)
 ```
+
+## Running GOSt
+To run the gProfiler tool GOSt in R, we use the gprofiler2 R package's gost function. This performs functional enrichments analysis on a gene list. In this case we perform enrichment analysis on our up- and down-regulated genes. We also perform gost search on all differentially expressed genes to compare to these separate searches. This search includes genes that are neither upregulated or downregulated, whose log fold change is between -0.05 and 0.05. For all analyses we use a user_threshold of 0.05 to determine if a term is significant.
+
+>2. What annotation data did you use and why? What version of the annotation are you using?
+
+The annotation data I'm using is from GO Biological process (GO:BP), WikiPathways (WP), Reactome (REAC), and Kyoto Encyclopedia of Genes and Genomes (KEGG). I chose the first three as they are the ones I'm familiar with from our gprofiler tutorial
+```{r eval=TRUE, message=FALSE}
+# get HUGO gene names of up- and down-regulated genes
+all_deg_names <- rownames(qlf_output_hits[which(qlf_output_hits$table$PValue < 0.05),])
+upreg_gene_names <- rownames(up_reg_genes)
+downreg_gene_names <- rownames(down_reg_genes)
+
+# Run gost on all differentially expressed genes, even those that are not regulated (log fold change between -0.05 and 0.05)
+all_degs_gost <- gprofiler2::gost(
+  all_deg_names,
+  multi_query = FALSE,
+  organism = "hsapiens",
+  sources = c("GO:BP", "WP", "REAC", "KEGG"),
+  user_threshold=0.05,
+  correction_method = "fdr"
+)
+# Run GOSt on upregulated and downregulated genes
+upreg_genes_gost <- gprofiler2::gost(
+  upreg_gene_names,
+  multi_query = FALSE,
+  organism = "hsapiens",
+  sources = c("GO:BP", "WP", "REAC", "KEGG"),
+  user_threshold=0.05,
+  correction_method = "fdr"
+)
+downreg_genes_gost <- gprofiler2::gost(
+  downreg_gene_names,
+  multi_query = FALSE,
+  organism = "hsapiens",
+  sources = c("GO:BP", "WP", "REAC", "KEGG"),
+  user_threshold=0.05,
+  correction_method = "fdr"
+)
+```
+
+We create a function that helps us get top terms by the source. This will help visualize what kind of data we are looking at. If the source is GO:BP we will likely be looking at biological processes. If the source is KEGG, then we are looking at pathways, etc.
+```{r eval=TRUE, message=FALSE}
+# Function to get top result for specific source
+get_top_terms <- function(gost_results, source = "GO:BP", top_n = 5) {
+  # Extract results
+  results_df <- gost_results$result
+  
+  # Filter by source and sort by p-value
+  top_terms <- results_df %>%
+    filter(source == !!source) %>%
+    arrange(p_value) %>%
+    head(top_n)
+  
+  return(top_terms)
+}
+```
+> 3. How many genesets were returned with what thresholds?
+
+We used a 0.05 P-value threshold to determine if a result was significant. In total, 851 results were returned for All differentially expressed genes, 572 were returned for our upregulated gene list, and 406 were returned for our downregulated gene list.
+
+> 4. Run the analysis using the up-regulated set of genes, and the down-regulated set of genes separately. How do these results compare to using the whole list (i.e all differentially expressed genes together vs. the up-regulated and down regulated differentially expressed genes separately)?
+
+Here, we create a table which displays metadata about all the gene lists we ran ORA on. It contains data about the number of genes in the gene lists, the number of terms returned, and the number from each annotation set that was returned.
+```{r eval=TRUE, message=TRUE}
+gost_table <- data.frame(
+  Type = c("Differentially Expressed", "Upregulated", "Downregulated"),
+  NumGenes = c(length(all_deg_names), 
+               length(upreg_gene_names), 
+               length(downreg_gene_names)),
+  NumTermsReturned = c(nrow(all_degs_gost$result), 
+                       nrow(upreg_genes_gost$result), 
+                       nrow(downreg_genes_gost$result)),
+  Num_GOBP = c(length(which(all_degs_gost$result$source == "GO:BP")), 
+               length(which(upreg_genes_gost$result$source == "GO:BP")), 
+               length(which(downreg_genes_gost$result$source == "GO:BP"))),
+  Num_WP = c(length(which(all_degs_gost$result$source == "WP")), 
+             length(which(upreg_genes_gost$result$source == "WP")), 
+             length(which(downreg_genes_gost$result$source == "WP"))),
+  Num_REAC = c(length(which(all_degs_gost$result$source == "REAC")), 
+           length(which(upreg_genes_gost$result$source == "REAC")), 
+           length(which(downreg_genes_gost$result$source == "REAC"))),
+  Num_KEGG = c(length(which(all_degs_gost$result$source == "KEGG")), 
+         length(which(upreg_genes_gost$result$source == "KEGG")), 
+         length(which(downreg_genes_gost$result$source == "KEGG")))
+)
+knitr::kable(gost_table, caption="Table 1. Metadata table on gost results on the three gene lists we passed through: All significant differentially expressed genes, Upregulated genes, and Downregulated genes. ")
+```
+As we can see most of the results are GO Biological Process (GO:BP) terms. This is likely due to how GO:BP database covers a wide range of biological activities, both broad and specific. In contrast, KEGG, REAC, and WP pertain to more speicfic pathways and processes, thus making it more difficult for terms to have a higher statistical signficance.
+
+Since GO:BP returns the most searches, let's look at the top 5 GO:BP terms for each of the gene lists.
+
+```{r eval=TRUE, message=TRUE}
+# Getting the top 5 GO terms for GO:BP across the three to see if there's any overlap
+all_gobp_top_5 <- get_top_terms(all_degs_gost, top_n=5)
+up_gobp_top_5 <- get_top_terms(upreg_genes_gost, top_n=5)
+down_gobp_top_5 <- get_top_terms(downreg_genes_gost, top_n=5)
+
+top_gobp_table <- data.frame(
+  All_DEGs = all_gobp_top_5$term_name,
+  Upregulated = up_gobp_top_5$term_name,
+  Downregulated = down_gobp_top_5$term_name
+)
+knitr::kable(top_gobp_table, caption="Table 2. Top 5 GO:BP terms for the 3 gene lists: all differential expressed genes (ALL_DEGs), Upregulated genes, and Downregulated genes.")
+```
+
+Interestingly, the upregulated gene list contains more genes for KEGG and REAC. We can also investigate these terms further as well for just upregulated genes.
+```{r eval=TRUE, message=TRUE}
+up_reac_top_5 <- get_top_terms(upreg_genes_gost, source="REAC", top_n=5)
+up_kegg_top_5 <- get_top_terms(upreg_genes_gost, source="KEGG", top_n=5)
+top_gobp_table <- data.frame(
+  Upregulated_REAC = up_reac_top_5$term_name,
+  Upregulated_KEGG = up_kegg_top_5$term_name,
+  Upregulated_GOBP = up_gobp_top_5$term_name
+)
+knitr::kable(top_gobp_table, caption="Table 3. Top 5 REAC, KEGG, and GO:BP terms for Upregulated genes.")
+```
+
+
+
+From these analyses, it is clear that there is a strong difference in analyzing each gene list individually, such as upregulation versus downregulation for ORA. 
+
+# Interpretation
+ > Do the over-representation results support conclusions or mechanism discussed in the original paper?
+ 
+ Yes, the overrepresentation results seem to support conclusions in the paper. The paper [@zheng2024] discusses a specific gene Grainy-head like 2 protein (GRHL2). As we can see, REAC and KEGG descriptions seem to be more specific than GO:BP. The top hit for REAC is Cytokine signaling in immune system. Since this is an upregulated gene, we can possibly presume that the sample this was derived from was in the process of fighting off an infection, thus prompting cytokine signaling. Additionally, all the pathways listed in the KEGG pathways are related to disease and autoimmune disorders, further being indicative that the genes which are differentially expressed are being upregulated to combat disease. 
+ 
+ > Can you find evidence, i.e. publications, to support some of the results that you see. How does this evidence support your results.
+
+Yes, in the context of breast cancer in the paper [@Petrof2014] it is discussed that upregulation of GRHL2 correlates to immune disorders such as dysplasia.
 
 # Works Cited
