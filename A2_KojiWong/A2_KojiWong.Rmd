@@ -42,6 +42,7 @@ if (!requireNamespace("dplyr", quietly = TRUE))
   BiocManager::install("dplyr")
 
 library(dplyr)
+library(ggplot2)
 ```
 
 # Introduction
@@ -145,10 +146,7 @@ Out of the DEGs, 167 passed correction. We chose to use the False Discovery Rate
 > 3. Show the amount of differentially expressed genes using an MA Plot or a Volcano plot. Highlight genes of interest.
 
 We plot a volcano plot to visualize the fold change versus p value. Highlighted in red are genes that are significantly differentially expressed. Genes on the left of the split on 0 are downregulated genes while genes on the right are upregulated.
-```{r eval=TRUE, message=TRUE, volcano_plot, fig.ext="png", dev = "png", fig.cap="Figure 1. This graph shows all the differentially expressed genes on a volcano plot. Significant genes are highlighted in red. Significant genes with a logFC > 0 are upregulated and logFC < 0 are downregulated."}
-# Load necessary libraries
-library(ggplot2)
-
+```{r eval=TRUE, message=TRUE, volcano_plot, fig.ext="png", dev = "png", fig.cap="Figure 1. This graph shows all the differentially expressed genes on a volcano plot of log p-value versus log fold change. Genes that are significant (have higher confidence) differentially expressed are highlighted in red. Significant genes with a logFC > 0 on the right of the plot are upregulated and logFC < 0 on the left of the plot are downregulated."}
 # Extract the results table from topTags output
 de_results <- as.data.frame(qlf_output_hits$table)
 
@@ -156,7 +154,7 @@ de_results <- as.data.frame(qlf_output_hits$table)
 de_results$significant <- ifelse(de_results$FDR < 0.05, "Significant", "Not Significant")
 
 # Create volcano plot
-ggplot(de_results, aes(x = logFC, y = -log10(PValue))) +
+ggplot2::ggplot(de_results, aes(x = logFC, y = -log10(PValue))) +
   geom_point(aes(color = significant), size = 2) +
   scale_color_manual(values = c("Significant" = "red", "Not Significant" = "gray")) +
   theme_minimal() +
@@ -164,7 +162,7 @@ ggplot(de_results, aes(x = logFC, y = -log10(PValue))) +
        x = "Log2 Fold Change",
        y = "-log10(P-Value)") +
   theme(legend.position = "right") +
-  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "blue")  # Optional threshold line
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "blue")
 
 ```
 
@@ -194,7 +192,7 @@ patients <- gsub("(p[0-9]+)-.*", "\\1", colnames(top_hits_expression))
 # Check the extracted patient information
 print(patients)
 
-# Create the sample annotation data frame
+# Create the sample annotation data frame similar to design data frame
 sample_annotation <- data.frame(
   Condition = conditions,  # Condition column (GFPnegative, GFPpositive, negcontrol)
   Patient = patients       # Patient column (p8, p9, p10, p11, p12)
@@ -210,8 +208,7 @@ condition_colors <- list(
   Patient = c(p8 = "darkgreen", p9 = "orange", p10 = "purple", p11 = "brown", p12 = "pink")
 )
 
-# Check the color scheme
-print(condition_colors)
+
 pheatmap::pheatmap(top_hits_expression,
          scale = "row",  # Scale by row (genes) to highlight expression patterns
          clustering_distance_rows = "euclidean",
@@ -223,7 +220,7 @@ pheatmap::pheatmap(top_hits_expression,
 
 ```
 
-As we can see in Figure 2, our conditions do tend to cluster together, notably GFP positive and GFP negative. 
+As we can see in Figure 2, our conditions do tend to cluster together, notably GFP positive and GFP negative patient genes.
 
 # Gene List Enrichment Analysis
 Gene list enrichment analysis is a common task in bioinformatics that helps identify biological pathways, processes, or functions that are overrepresented in a given gene list. We start with a list of genes and genesets/pathways from an annotation database.
@@ -265,7 +262,7 @@ To run the gProfiler tool GOSt in R, we use the gprofiler2 R package's gost func
 
 >2. What annotation data did you use and why? What version of the annotation are you using?
 
-The annotation data I'm using is from GO Biological process (GO:BP), WikiPathways (WP), Reactome (REAC), and Kyoto Encyclopedia of Genes and Genomes (KEGG). I chose the first three as they are the ones I'm familiar with from our gprofiler tutorial
+The annotation data I'm using is from GO Biological process (GO:BP)[@go_bp], WikiPathways (WP)[@wiki_pathways], Reactome (REAC)[@reactome], and Kyoto Encyclopedia of Genes and Genomes (KEGG)[@kegg]. I chose the first three as they are the ones I'm familiar with from our gprofiler tutorial and the KEGG database as I was interested in pathways specifically.
 ```{r eval=TRUE, message=FALSE}
 # get HUGO gene names of up- and down-regulated genes
 all_deg_names <- rownames(qlf_output_hits[which(qlf_output_hits$table$PValue < 0.05),])
@@ -388,6 +385,6 @@ From these analyses, it is clear that there is a strong difference in analyzing 
  
  > Can you find evidence, i.e. publications, to support some of the results that you see. How does this evidence support your results.
 
-Yes, in the context of breast cancer in the paper [@Petrof2014] it is discussed that upregulation of GRHL2 correlates to immune disorders such as dysplasia.
+Yes, one of the results noted in our analyses was that there seemed to be a moderately higher representation of upregulated genes related to higher GRHL2 levels in the context of GFP positive patients. In the context of breast cancer in the paper [@Petrof2014] it is discussed that upregulation of GRHL2 correlates to immune disorders such as dysplasia, which agrees with our results.
 
 # Works Cited
