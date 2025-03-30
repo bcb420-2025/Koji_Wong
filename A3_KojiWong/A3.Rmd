@@ -1,0 +1,24 @@
+---
+title: "Assignment 3: Data set Pathway and Network Analysis"
+author: "Koji Wong"
+date: "04/01/2025"
+bibliography: "A3_bib.bib"
+output:
+    html_document:
+        toc: true
+        toc_float: true
+        fig_caption: yes
+        number_sections: true
+        theme: cosmo
+        highlight: tango
+        code_folding: show
+        df_print: paged
+        self_contained: yes
+nocite: '@*'
+---
+
+
+```{r eval = TRUE, message=TRUE}
+print("Hello World")
+```
+
