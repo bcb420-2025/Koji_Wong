@@ -17,9 +17,64 @@ output:
 nocite: '@*'
 ---
 
+# Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.path = "figures/")
+
+# install dependencies
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+if (!require("tools", quietly = TRUE))
+  install.packages("tools")
+
+if (!requireNamespace("edgeR", quietly = TRUE))
+  BiocManager::install("edgeR")
+
+if (!requireNamespace("limma", quietly = TRUE))
+  BiocManager::install("limma")
+
+if (!requireNamespace("pheatmap", quietly = TRUE))
+  BiocManager::install("pheatmap")
+
+if (!requireNamespace("ggplot2", quietly = TRUE))
+  BiocManager::install("ggplot2")
+
+if (!requireNamespace("dplyr", quietly = TRUE))
+  BiocManager::install("dplyr")
+
+library(dplyr)
+library(ggplot2)
+```
 
 ```{r eval = TRUE, message=TRUE}
-print("Hello World")
+print(getwd())
+```
+
+In our last assignment, we created a ranked list of genes for genesets with upregulated genes and downregulated genes. We have uploaded them to github and load them in below.
+```{r eval=TRUE, message=TRUE}
+print(getwd())
+# Getting the ranked gene sets from Assignment 2
+destfile = "precomputed/upreg_genes_gost.rds"
+if (!file.exists(destfile)) {
+  download.file(
+    url = "https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A3_KojiWong/precomputed/upreg_genes_gost.rds",
+    destfile = destfile
+  )
+}
+# Load in the normalized count matrix from our rds object file
+upreg_genes_gost <- readRDS(destfile)
+
+destfile = "precomputed/downreg_genes_gost.rds"
+if (!file.exists(destfile)) {
+  download.file(
+    url = "https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A3_KojiWong/precomputed/downreg_genes_gost.rds",
+    destfile = destfile
+  )
+}
+# Load in the normalized count matrix from our rds object file
+downreg_genes_gost <- readRDS(destfile)
 ```
 
 #Links to an external site.Non-thresholded Gene set Enrichment Analysis

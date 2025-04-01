@@ -2967,11 +2967,38 @@ Analysis</h1>
 </div>
 
 
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">print</span>(<span class="st">&quot;Hello World&quot;</span>)</span></code></pre></div>
-<pre><code>## [1] &quot;Hello World&quot;</code></pre>
+<div id="set-up" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> Set up</h1>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">getwd</span>())</span></code></pre></div>
+<pre><code>## [1] &quot;/home/rstudio/projects/A3_KojiWong&quot;</code></pre>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">getwd</span>())</span></code></pre></div>
+<pre><code>## [1] &quot;/home/rstudio/projects/A3_KojiWong&quot;</code></pre>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># Getting the ranked gene sets from Assignment 2</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>destfile <span class="ot">=</span> <span class="st">&quot;precomputed/upreg_genes_gost.rds&quot;</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(destfile)) {</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="fu">download.file</span>(</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>    <span class="at">url =</span> <span class="st">&quot;https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A3_KojiWong/precomputed/upreg_genes_gost.rds&quot;</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>    <span class="at">destfile =</span> destfile</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  )</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>}</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># Load in the normalized count matrix from our rds object file</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>upreg_genes_gost <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(destfile)</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>destfile <span class="ot">=</span> <span class="st">&quot;precomputed/downreg_genes_gost.rds&quot;</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(destfile)) {</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  <span class="fu">download.file</span>(</span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>    <span class="at">url =</span> <span class="st">&quot;https://github.com/bcb420-2025/Koji_Wong/raw/refs/heads/main/A3_KojiWong/precomputed/downreg_genes_gost.rds&quot;</span>,</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>    <span class="at">destfile =</span> destfile</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>  )</span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>}</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="co"># Load in the normalized count matrix from our rds object file</span></span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>downreg_genes_gost <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(destfile)</span></code></pre></div>
 <p>#Links to an external site.Non-thresholded Gene set Enrichment
-Analysis ## Conduct non-thresholded gene set enrichment analysis using
-the ranked set of genes from Assignment #2.</p>
+Analysis</p>
+<div id="conduct-non-thresholded-gene-set-enrichment-analysis-using-the-ranked-set-of-genes-from-assignment-2." class="section level2" number="1.1">
+<h2><span class="header-section-number">1.1</span> Conduct
+non-thresholded gene set enrichment analysis using the ranked set of
+genes from Assignment #2.</h2>
 <blockquote>
 <p>Q1. What method did you use? What genesets did you use? Make sure to
 specify versions and cite your methods. Summarize your enrichment
@@ -3053,6 +3080,8 @@ B. Meyer, Kelley Salem, Phillipos K. Tsourkas, et al. 2024.
 <span>“Elevated <span>GRHL2</span> Imparts Plasticity in
 <span>ER</span>-Positive Breast Cancer Cells.”</span> <em>Cancers</em>
 16 (16): 2906. <a href="https://doi.org/10.3390/cancers16162906">https://doi.org/10.3390/cancers16162906</a>.
+</div>
+</div>
 </div>
 </div>
 
