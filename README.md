@@ -18,3 +18,9 @@ Then open the file `echo $(pwd)/A1_KojiWong.html` in a browser
 The RMarkdown in HTML for A2 can be found below.
 
 <a href=https://github.com/bcb420-2025/Koji_Wong/blob/main/A2_KojiWong/A2_KojiWong.html>A2 HTML</a>
+
+
+## A3
+The RMarkdown in HTML for A3 can be found below.
+
+<a href=https://github.com/bcb420-2025/Koji_Wong/blob/main/A3_KojiWong/A3.html>A3 HTML</a>
