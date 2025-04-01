@@ -3279,12 +3279,14 @@ results.</p>
 </blockquote>
 <p>As the latest version of GSEA was not compatible with Java 11 on the
 docker image, a previous version compatible was obtained v4.3.3 located
-in the GSEA directory. Genesets of size betweewn 15 and 200 were taken
-so as to not get genesets that were too large and dominate over other
+in the GSEA directory. Genesets of size between 15 and 200 were taken so
+as to not get genesets that were too large and dominate over other
 genesets. Additionally 1000 permutations are used to obtain a
-significant amount of randomness for the analysis. The most recent gmt
-file version (March 1, 2025) from the Bader Lab was used which can be
-obtained <a href="https://download.baderlab.org/EM_Genesets/March_01_2025/Human/symbol/#:~:text=Human_GOBP_AllPathways_noPFOCR_no_GO_iea_March_01_2025_symbol.gmt">here</a>
+significant amount of randomness for the analysis. We use no collapse
+since we’ve already mapped gene symbols to genes. We also set the
+scoring scheme to weighted rather than using a presence/absence of
+ranking order. The most recent gmt file version (March 1, 2025) from the
+Bader Lab was used which can be obtained <a href="https://download.baderlab.org/EM_Genesets/March_01_2025/Human/symbol/#:~:text=Human_GOBP_AllPathways_noPFOCR_no_GO_iea_March_01_2025_symbol.gmt">here</a>
 <span class="citation">(Daniele Merico 201AD)</span></p>
 <div id="rank-calculation" class="section level3" number="2.1.1">
 <h3><span class="header-section-number">2.1.1</span> Rank
