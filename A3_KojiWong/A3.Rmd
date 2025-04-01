@@ -248,11 +248,11 @@ knitr::kable(head(filtered_pos[,cols], 5), format = "html") %>%
   kableExtra::scroll_box(height = "500px")
 knitr::kable(head(filtered_neg[,cols]), format = "html") %>%
   kableExtra::kable_styling(bootstrap_options = "striped", full_width = F) %>%
-  kableExtra::scroll_box(height = "500px")
+  kableExtra::scroll_box(height = "100px")
 ```
-Interestingly no genesets were found to be significantly enriched for the negative phenotype with FDR < 0.05. Even changing this to 0.25 to be more lax, it was found that there was 0. As we saw in Assignment 2 as well, it seemed upregulated genes dominated and had more annotations with GOBP, WikiPathways and even KEGG while for downregulated genes we only saw GOBP. Despite getting 406 downregulated genesets with FDR < 0.05, they may have not had enough logFC change in the negative direction meaning they were similarly expressed across the two conditions, which would reflect on the rank values used for GSEA. 
+Surprisingly, no genesets were found to be significantly enriched for the negative phenotype with FDR < 0.05. Even changing this to 0.25 to be more lax, it was found that there was 0. As we saw in Assignment 2 as well, it seemed upregulated genes dominated and had more annotations with GOBP, WikiPathways and even KEGG while for downregulated genes we only saw GOBP. Despite getting 406 downregulated genesets with FDR < 0.05, they may have not had enough logFC change in the negative direction meaning they were similarly expressed across the two conditions, which would reflect on the rank values used for GSEA. 
 
-To explain in terms of biological significance, this tells us that in the GRHL2 cancer phenotype, we see mostly upregulated pathways dominating the genesets. We could chalk this up to how genes relating to cancer tend to be overly activated such as in cell proliferation and immune signalling rather than repressed. 
+To explain in terms of biological significance, this tells us that in the GRHL2 cancer phenotype, we see mostly upregulated pathways dominating the genesets. We could chalk this up to how genes relating to cancer tend to be overly activated such as in cell proliferation and immune signalling rather than repressed. This would make sense for our data since we are comparing 2 breast cancer phenotypes, just one with GRHL2 positive and the other being negative to see how GRHL2 influences breast cancer.
 
 # Using your results from your non-thresholded gene set enrichment analysis visualize your results in Cytoscape.
 
@@ -296,6 +296,8 @@ These findings correspond to our Assignment 2 results which showed a high upregu
 The figure below was generated using Enrichment Map and adding signature gene sets from the web. Transcription factors from the same March_01_2025 human geneset were used to create this network. We chose the highest Mann-Whitney score which turned out to be BARX2, a gene that encodes a transcription factor relevant to cancer.
 
 ![Figure 5. Transcription Factor BARX2 interactions with genesets in site inhibition dna methylation telomere cluster.](figures/barX2_TF_network.png)
+
+
 
 It was found BARX2 interacts with the entire cluster involving site inhibition of DNA methylation on telomeres. Through investigating which TF has high interactions with these upregulated genesets, we may be able to infer possible drug targets involved or correlated with these genes involved in cell proliferation and tumour progression. Specifically, it was found that downregulation of BARX2 corresponds to breast cancer, indicating that the factor plays a vital role in maintaining cell growth and that dysregulation of it can lead to tumour growth. 
 
